@@ -1,0 +1,48 @@
+package main
+
+import (
+	"os"
+	"encoding/json"
+	"log"
+)
+
+type ConfGrayLog struct {
+	Host string
+	Port string
+}
+
+type ConfAeroSpike struct {
+	Host string
+	Port int
+	Ns string
+	Db string
+	Timeout int
+}
+
+type Config struct {
+	Cpu    int
+	Listener string
+	Log 	string
+	Debug 	bool
+	Buffer  int
+	Db 	string
+	Logger ConfGrayLog
+	AeroSpike ConfAeroSpike
+}
+
+// загрузка конфига
+func NewConfig(path string) (*Config){
+
+	file, err := os.Open(path)
+	if err != nil {
+		log.Fatalf("error opening conf file: %v", err)
+	}
+
+	conf := new(Config)
+	err = json.NewDecoder(file).Decode(&conf)
+
+	if err != nil {
+		log.Fatalf("error parsing conf file: %v", err)
+	}
+	return conf
+}
