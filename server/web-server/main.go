@@ -35,7 +35,8 @@ func main() {
 		})
 	}
 
-	cacheProvider := cache.New(Conf.AeroSpike.Host, Conf.AeroSpike.Port, Conf.AeroSpike.Ns, Conf.AeroSpike.Db, Conf.AeroSpike.Timeout)
+	cacheProvider := cache.New(Conf.AeroSpike.Host, Conf.AeroSpike.Port, Conf.AeroSpike.Ns, Conf.AeroSpike.Db, Conf.AeroSpike.Timeout, Conf.AeroSpike.Ttl)
+	defer cacheProvider.Close()
 
 	coreVisitor, err := visitor.New(Conf.Debug, Conf.Db, Conf.Buffer); if err != nil {
 		panic(err)

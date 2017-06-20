@@ -21,9 +21,8 @@ func NewHttp(addr string) (error){
 	router := fasthttprouter.New()
 	handler := HewHandler()
 
-	// учет статистики
 	router.GET("/api/visitor", handler.GetHandler)
-	router.POST("/api/visitor", handler.PostHandler)
+	router.POST("/api/visitor", handler.GetHandler)
 	router.PUT("/api/visitor", handler.PutHandler)
 
 	return fasthttp.ListenAndServe(addr, router.Handler)

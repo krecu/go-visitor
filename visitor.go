@@ -11,10 +11,12 @@ import (
 	"github.com/mirrr/go-sypexgeo"
 	"net"
 	"github.com/CossackPyra/pyraconv"
+	"sync"
 )
 
 
 type Visitor struct {
+	sync.RWMutex
 	Path string
 	Cache map[string]interface{}
 	Debug bool
@@ -64,18 +66,26 @@ func (v *Visitor) Close() {
  Add to cache
  */
 func (v *Visitor) SetCache(key string, val interface{}) {
+	v.Lock()
+
 	if len(v.Cache) > v.Buffer {
 		v.Cache = make(map[string]interface{})
 		v.Cache[key] = val
 	} else {
 		v.Cache[key] = val
 	}
+
+	v.Unlock()
 }
 
 /**
  Get from cache
  */
 func (v *Visitor) GetCache(key string) (val interface{}) {
+
+	v.RLock()
+	defer v.RUnlock()
+
 	val, ok := v.Cache[key]; if !ok {
 		val = nil
 	}

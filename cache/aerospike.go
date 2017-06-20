@@ -1,3 +1,7 @@
+/**
+	Провайдер хранения данных о пользователе в AeroSpike реалезованные по интерфейсу Cache
+ */
+
 package cache
 
 import (
@@ -5,6 +9,10 @@ import (
 	"errors"
 	"github.com/CossackPyra/pyraconv"
 	"github.com/krecu/go-visitor/model"
+	_ "log"
+	"fmt"
+	"log"
+	"time"
 )
 
 type AeroSpike struct {
@@ -12,11 +20,19 @@ type AeroSpike struct {
 	Port int
 	Ns string
 	Db string
-	Timeout int
+	Timeout time.Duration
+	Ttl uint32
 	Client *aerospike.Client
 }
 
-func New(host string, port int, ns string, db string, timeout int) (*AeroSpike) {
+/**
+	host - адрес сервера
+	port - порт
+	ns - name space базы
+	db - set хранения данных
+	timeout - глобальная задержка на все операции
+ */
+func New(host string, port int, ns string, db string, timeout time.Duration, ttl uint32) (*AeroSpike) {
 
 	conn, err := aerospike.NewClient(host, port); if err != nil {
 		panic(err)
@@ -28,19 +44,32 @@ func New(host string, port int, ns string, db string, timeout int) (*AeroSpike) 
 		Db: db,
 		Ns: ns,
 		Timeout: timeout,
+		Ttl: ttl, // @todo вынести в конфиг
 		Client: conn,
 	}
 }
 
 /**
- Get value from cache
+	Закрываем соединение
  */
-func (c *AeroSpike) Get(id string) (vModel model.Visitor, err error) {
+func (c *AeroSpike) Close() {
+	c.Client.Close()
+}
+
+/**
+ 	id - идентификатор в бд
+ */
+func (c *AeroSpike) Get(id string) (visitor model.Visitor, err error) {
+
+	if !c.Client.IsConnected() {
+		log.Fatalf("AeroSpike disconect")
+	}
 
 	var record *aerospike.Record
 
 	policy := new(aerospike.BasePolicy)
 	policy.Priority = aerospike.HIGH
+	policy.Timeout = c.Timeout * time.Millisecond
 
 	key, err := aerospike.NewKey(c.Ns, c.Db, id); if err != nil {
 		return
@@ -51,25 +80,32 @@ func (c *AeroSpike) Get(id string) (vModel model.Visitor, err error) {
 	}
 
 	if err == nil {
-		vModel = c.UnMarshal(record.Bins)
+		visitor = c.UnMarshal(record.Bins)
 	}
 
 	return
 }
 
-func (c *AeroSpike) Set(visitor model.Visitor, extra map[string]interface{}) (err error) {
+/**
+	visitor - модель от ядра
+	extra - дополнительный набор полей
+ */
+func (c *AeroSpike) Set(id string, visitor model.Visitor) (err error) {
 
+	if !c.Client.IsConnected() {
+		log.Fatalf("AeroSpike disconect")
+	}
+
+	// преобразуем структуру в массив
 	record := c.Marshal(visitor)
 
 	policy := new(aerospike.WritePolicy)
 	policy.Priority = aerospike.HIGH
-	policy.Expiration = 2592000 // month
+	policy.Expiration = c.Ttl
+	policy.Timeout = c.Timeout * time.Millisecond
 
-	for key, val := range extra {
-		record[key] = val
-	}
-
-	key, err := aerospike.NewKey(c.Ns, c.Db, record["id"]); if err != nil {
+	// генерируем digits
+	key, err := aerospike.NewKey(c.Ns, c.Db, id); if err != nil {
 		return
 	}
 
@@ -80,11 +116,19 @@ func (c *AeroSpike) Set(visitor model.Visitor, extra map[string]interface{}) (er
 	return
 }
 
-
-//
+/**
+	Упаковываем модель в key/value массив. Так как в AeroSpike есть несколько ограничения
+	на длину имя bin (14 символов) то нам необходимо сократить имена
+ */
 func (c *AeroSpike) Marshal (visitor model.Visitor) (map[string]interface{}) {
 
 	record := make(map[string]interface{})
+
+	record["created"] 	= visitor.Created
+	record["id"] 		= visitor.Id
+
+	// добавляем доп поля
+	record["extra"] 	= visitor.Extra
 
 	// browser
 	record["br_min"] 	= visitor.Browser.MinorVer
@@ -144,7 +188,9 @@ func (c *AeroSpike) Marshal (visitor model.Visitor) (map[string]interface{}) {
 	return record
 }
 
-//
+/**
+	Распаковываем массив вида key/value значений в модель ядра
+ */
 func (c *AeroSpike) UnMarshal(values map[string]interface{}) (visitor model.Visitor){
 
 	var ok bool
@@ -183,7 +229,7 @@ func (c *AeroSpike) UnMarshal(values map[string]interface{}) (visitor model.Visi
 
 	// if country not empty
 	_, ok = values["ct_id"]; if ok {
-		visitor.City = model.City{
+		visitor.Country = model.Country{
 			Id: 	uint(pyraconv.ToInt64(values["ct_id"])),
 			Name: 	pyraconv.ToString(values["ct_name"]),
 			NameRu: pyraconv.ToString(values["ct_name_ru"]),
@@ -223,5 +269,50 @@ func (c *AeroSpike) UnMarshal(values map[string]interface{}) (visitor model.Visi
 		Ua:   		pyraconv.ToString(values["pr_ua"]),
 	}
 
+	visitor.Created = pyraconv.ToInt64(values["created"])
+	visitor.Id = pyraconv.ToString(values["id"])
+
+	_, ok = values["extra"]; if ok {
+		visitor.Extra = _cleanupInterfaceMap(values["extra"].(map[interface{}]interface{}))
+	}
+
 	return
+}
+
+/**
+	Helper function - преобразуем интерфейс в key/value
+ */
+func _cleanupInterfaceMap(in map[interface{}]interface{}) map[string]interface{} {
+	res := make(map[string]interface{})
+	for k, v := range in {
+		res[fmt.Sprintf("%v", k)] = _cleanupMapValue(v)
+	}
+	return res
+}
+
+/**
+	Helper function - преобразуем массив интерфейсов в key/value
+ */
+func _cleanupInterfaceArray(in []interface{}) []interface{} {
+	res := make([]interface{}, len(in))
+	for i, v := range in {
+		res[i] = _cleanupMapValue(v)
+	}
+	return res
+}
+
+/**
+	Helper function - преобразуем массив интерфейс/интерфейсов в key/value
+ */
+func _cleanupMapValue(v interface{}) interface{} {
+	switch v := v.(type) {
+	case []interface{}:
+		return _cleanupInterfaceArray(v)
+	case map[interface{}]interface{}:
+		return _cleanupInterfaceMap(v)
+	case string:
+		return v
+	default:
+		return fmt.Sprintf("%v", v)
+	}
 }

@@ -4,6 +4,7 @@ import (
 	"os"
 	"encoding/json"
 	"log"
+	"time"
 )
 
 type ConfGrayLog struct {
@@ -16,7 +17,8 @@ type ConfAeroSpike struct {
 	Port int
 	Ns string
 	Db string
-	Timeout int
+	Timeout time.Duration
+	Ttl uint32
 }
 
 type Config struct {

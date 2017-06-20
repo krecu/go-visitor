@@ -3,8 +3,6 @@ package main
 import (
 	"github.com/valyala/fasthttp"
 	"encoding/json"
-	"time"
-	"github.com/fatih/structs"
 )
 
 type Handler struct {}
@@ -13,14 +11,10 @@ func HewHandler() *Handler{
 	return &Handler{}
 }
 
+/**
+	Пытаемся получить данные о визиотре
+ */
 func (h *Handler) GetHandler(ctx *fasthttp.RequestCtx) {
-	h.CrossDomain(ctx)
-	ctx.SetContentType("application/json; charset=utf8")
-	ctx.SetStatusCode(200)
-	ctx.Write([]byte("TEST"))
-}
-
-func (h *Handler) PostHandler(ctx *fasthttp.RequestCtx) {
 
 	type BodyValues struct{
 		Ip string
@@ -30,45 +24,76 @@ func (h *Handler) PostHandler(ctx *fasthttp.RequestCtx) {
 	}
 
 	var body BodyValues
+	var err error
 
 	json.Unmarshal(ctx.Request.Body(), &body)
 
-	extra := make(map[string]interface{})
-	extra["id"] = body.Id
-	extra["created"] = time.Now().Unix()
-
 	ctx.SetContentType("application/json; charset=utf8")
 
-	info, err := Core.Get(body.Id, body.Ip, body.Ua, extra); if err == nil {
+	if body.Id == "" || body.Ua == "" || body.Ip == "" {
+		ctx.SetStatusCode(400)
+		ctx.Write([]byte("ERROR: Bad parameters"))
+		return
+	} else {
 
-		m := structs.Map(info)
-		for key, val := range extra {
-			m[key] = val
-		}
+		info, err := Core.Get(body.Id, body.Ip, body.Ua, body.Extra); if err == nil {
 
-		jsonData, err := json.Marshal(m); if err == nil {
-			ctx.SetStatusCode(200)
-			ctx.Write(jsonData)
+			jsonData, err := json.Marshal(info); if err == nil {
+				ctx.SetStatusCode(200)
+				ctx.Write(jsonData)
+			}
 		}
 	}
 
 	if err != nil {
-		ctx.SetStatusCode(504)
+		ctx.SetStatusCode(500)
 		ctx.Write([]byte("ERROR:" + err.Error()))
 	}
-
 }
 
-
+/**
+	Пытаемся дополнить визитора наборами полей
+ */
 func (h *Handler) PutHandler(ctx *fasthttp.RequestCtx) {
-	h.CrossDomain(ctx)
+	type BodyValues struct{
+		Ip string
+		Ua string
+		Id string
+		Extra map[string]interface{}
+	}
+
+	var body BodyValues
+	var err error
+
+	json.Unmarshal(ctx.Request.Body(), &body)
+
 	ctx.SetContentType("application/json; charset=utf8")
-	ctx.SetStatusCode(200)
-	ctx.Write([]byte("TEST"))
+
+	if body.Id == "" || body.Ua == "" || body.Ip == "" {
+		ctx.SetStatusCode(400)
+		ctx.Write([]byte("ERROR: Bad parameters"))
+		return
+	} else {
+
+		info, err := Core.Put(body.Id, body.Ip, body.Ua, body.Extra); if err == nil {
+
+			jsonData, err := json.Marshal(info); if err == nil {
+				ctx.SetStatusCode(200)
+				ctx.Write(jsonData)
+			}
+		}
+	}
+
+	if err != nil {
+		ctx.SetStatusCode(500)
+		ctx.Write([]byte("ERROR:" + err.Error()))
+	}
 }
 
 
-// добавляем кросориджены к респонсу
+/**
+	добавляем кросориджены к респонсу
+ */
 func (h *Handler) CrossDomain(ctx *fasthttp.RequestCtx) {
 	ref := ctx.Request.Header.Peek("Origin")
 	if ref == nil {
