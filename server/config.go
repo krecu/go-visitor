@@ -1,4 +1,4 @@
-package main
+package server
 
 import (
 	"os"
@@ -9,7 +9,7 @@ import (
 
 type ConfGrayLog struct {
 	Host string
-	Port string
+	Port int
 }
 
 type ConfAeroSpike struct {

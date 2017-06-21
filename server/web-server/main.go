@@ -11,7 +11,7 @@ import (
 )
 
 var (
-	Conf *Config
+	Conf *server.Config
 	Core *server.Core
 )
 
@@ -23,7 +23,7 @@ func main() {
 
 	flag.Parse()
 
-	Conf = NewConfig(*conf)
+	Conf = server.NewConfig(*conf)
 
 	runtime.GOMAXPROCS(Conf.Cpu)
 

@@ -137,11 +137,21 @@ func (c *greeterClient) GetVisitor(ctx context.Context, in *VisitorRequest, opts
 	return out, nil
 }
 
+func (c *greeterClient) PutVisitor(ctx context.Context, in *VisitorRequest, opts ...grpc.CallOption) (*VisitorReply, error) {
+	out := new(VisitorReply)
+	err := grpc.Invoke(ctx, "/rpc.Greeter/PutVisitor", in, out, c.cc, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // Server API for Greeter service
 
 type GreeterServer interface {
 	// Sends a greeting
 	GetVisitor(context.Context, *VisitorRequest) (*VisitorReply, error)
+	PutVisitor(context.Context, *VisitorRequest) (*VisitorReply, error)
 }
 
 func RegisterGreeterServer(s *grpc.Server, srv GreeterServer) {
@@ -166,6 +176,24 @@ func _Greeter_GetVisitor_Handler(srv interface{}, ctx context.Context, dec func(
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Greeter_PutVisitor_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(VisitorRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(GreeterServer).PutVisitor(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/rpc.Greeter/PutVisitor",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(GreeterServer).PutVisitor(ctx, req.(*VisitorRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 var _Greeter_serviceDesc = grpc.ServiceDesc{
 	ServiceName: "rpc.Greeter",
 	HandlerType: (*GreeterServer)(nil),
@@ -173,6 +201,10 @@ var _Greeter_serviceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetVisitor",
 			Handler:    _Greeter_GetVisitor_Handler,
+		},
+		{
+			MethodName: "PutVisitor",
+			Handler:    _Greeter_PutVisitor_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

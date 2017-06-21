@@ -10,6 +10,7 @@ package rpc;
 service Greeter {
   // Sends a greeting
   rpc GetVisitor (VisitorRequest) returns (VisitorReply) {}
+  rpc PutVisitor (VisitorRequest) returns (VisitorReply) {}
 }
 
 // The request message containing the user's name.
