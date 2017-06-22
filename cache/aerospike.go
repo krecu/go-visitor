@@ -229,7 +229,7 @@ func (c *AeroSpike) UnMarshal(values map[string]interface{}) (visitor model.Visi
 
 	// if country not empty
 	_, ok = values["ct_id"]; if ok {
-		visitor.Country = model.Country{
+		visitor.City = model.City{
 			Id: 	uint(pyraconv.ToInt64(values["ct_id"])),
 			Name: 	pyraconv.ToString(values["ct_name"]),
 			NameRu: pyraconv.ToString(values["ct_name_ru"]),
@@ -238,10 +238,11 @@ func (c *AeroSpike) UnMarshal(values map[string]interface{}) (visitor model.Visi
 
 	// if city not empty
 	_, ok = values["cn_id"]; if ok {
-		visitor.City = model.City{
+		visitor.Country = model.Country{
 			Id: 	uint(pyraconv.ToInt64(values["cn_id"])),
 			Name: 	pyraconv.ToString(values["cn_name"]),
 			NameRu: pyraconv.ToString(values["cn_name_ru"]),
+			Iso: 	pyraconv.ToString(values["cn_iso"]),
 		}
 	}
 

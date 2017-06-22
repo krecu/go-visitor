@@ -18,6 +18,7 @@ import (
 	"github.com/robertkowalski/graylog-golang"
 	"os"
 	"time"
+	"fmt"
 )
 
 var (
@@ -45,9 +46,17 @@ func (s *RpcServer) GetVisitor(ctx context.Context, in *pb.VisitorRequest) (*pb.
 			err = json.Unmarshal([]byte(in.GetExtra()), &extra)
 		}
 
-		info, err := Core.Get(in.GetId(), in.GetIp(), in.GetUa(), extra); if err == nil {
+		if Conf.Refresh {
+			info, err := Core.Refresh(in.GetId(), in.GetIp(), in.GetUa(), extra);
+			if err == nil {
+				jsonData, err = json.Marshal(info)
+			}
+		} else {
+			info, err := Core.Get(in.GetId(), in.GetIp(), in.GetUa(), extra);
+			if err == nil {
 
-			jsonData, err = json.Marshal(info)
+				jsonData, err = json.Marshal(info)
+			}
 		}
 	}
 
@@ -85,9 +94,16 @@ func (s *RpcServer) PutVisitor(ctx context.Context, in *pb.VisitorRequest) (*pb.
 			err = json.Unmarshal([]byte(in.GetExtra()), &extra)
 		}
 
-		info, err := Core.Put(in.GetId(), in.GetIp(), in.GetUa(), extra); if err == nil {
-
-			jsonData, err = json.Marshal(info)
+		if Conf.Refresh {
+			info, err := Core.Refresh(in.GetId(), in.GetIp(), in.GetUa(), extra);
+			if err == nil {
+				jsonData, err = json.Marshal(info)
+			}
+		} else {
+			info, err := Core.Put(in.GetId(), in.GetIp(), in.GetUa(), extra);
+			if err == nil {
+				jsonData, err = json.Marshal(info)
+			}
 		}
 	}
 
@@ -120,18 +136,20 @@ type LogMessage struct {
 
 func LogNotify(m LogMessage) {
 
-	g := gelf.New(gelf.Config{
-		GraylogPort:     Conf.Logger.Port,
-		GraylogHostname: Conf.Logger.Host,
-	})
+	if Conf.Logger.Enabled {
+		g := gelf.New(gelf.Config{
+			GraylogPort:     Conf.Logger.Port,
+			GraylogHostname: Conf.Logger.Host,
+		})
 
-	m.Host, _ = os.Hostname()
-	m.Version =  "1.0"
-	m.Timestamp =  time.Now().Unix()
-	m.Facility =  "Visitor"
+		m.Host, _ = os.Hostname()
+		m.Version = "1.0"
+		m.Timestamp = time.Now().Unix()
+		m.Facility = "Visitor"
 
-	message, _ := json.Marshal(m)
-	g.Log(string(message))
+		message, _ := json.Marshal(m)
+		g.Log(string(message))
+	}
 }
 
 func main()  {
@@ -163,6 +181,7 @@ func main()  {
 
 	// вешаем листнера на порт
 	listen, err := net.Listen("tcp", Conf.Listener); if err != nil {
+		fmt.Println(err)
 		panic(err)
 	}
 	s := grpc.NewServer()
@@ -171,6 +190,7 @@ func main()  {
 	})
 	reflection.Register(s)
 	if err := s.Serve(listen); err != nil {
+		fmt.Println(err)
 		panic(err)
 	}
 }

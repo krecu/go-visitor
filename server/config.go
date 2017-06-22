@@ -8,6 +8,7 @@ import (
 )
 
 type ConfGrayLog struct {
+	Enabled bool
 	Host string
 	Port int
 }
@@ -28,6 +29,7 @@ type Config struct {
 	Debug 	bool
 	Buffer  int
 	Db 	string
+	Refresh bool
 	Logger ConfGrayLog
 	AeroSpike ConfAeroSpike
 }

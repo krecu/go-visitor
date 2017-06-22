@@ -4,19 +4,13 @@ import (
 	"encoding/json"
 	"google.golang.org/grpc"
 	"golang.org/x/net/context"
-	pb "github.com/krecu/go-visitor/client/rpc-client/rpc"
+	pb "github.com/krecu/go-visitor/rpc"
 	"log"
 	"github.com/krecu/go-visitor/model"
 )
 
 type Client struct {
 	Addr string
-}
-
-type Body struct {
-	Ip string
-	Ua string
-	Id string
 }
 
 func New(addr string) (*Client, error) {
@@ -27,7 +21,7 @@ func New(addr string) (*Client, error) {
 }
 
 // получение на GRPC
-func (v *Client) Rpc(id string, ip string, ua string) (proto *model.Raw, err error) {
+func (v *Client) Get(id string, ip string, ua string, extra map[string]interface{}) (proto *model.Raw, err error) {
 
 	conn, err := grpc.Dial(v.Addr, grpc.WithInsecure())
 	if err != nil {
@@ -36,15 +30,11 @@ func (v *Client) Rpc(id string, ip string, ua string) (proto *model.Raw, err err
 	defer conn.Close()
 	chanel := pb.NewGreeterClient(conn)
 
-	result, err := chanel.GetVisitor(context.Background(), &pb.VisitorRequest{Ip: ip, Ua: ua, Id: id}); if err != nil {
+	result, err := chanel.GetVisitor(context.Background(), &pb.VisitorRequest{Ip: ip, Ua: ua, Id: id, Extra: extra}); if err != nil {
 		return
 	}
 
 	err = json.Unmarshal([]byte(result.GetBody()), &proto)
 
 	return
-}
-
-func main()  {
-	
 }

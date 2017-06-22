@@ -97,3 +97,29 @@ func (c *Core) Put(id string, ip string, ua string, extra map[string]interface{}
 	return
 }
 
+/**
+	Полное обновение запись
+
+	id - идентификатор в бд
+	ip - v4 IP адрес пользователя
+	ua - user agent пользователя
+	extra - дополнительные поля пользователя каторые не вычисляются а просто запишутся в бд
+ */
+func (c *Core) Refresh(id string, ip string, ua string, extra map[string]interface{}) (info model.Visitor, err error) {
+
+
+	info, err = c.Core.Identify(ip, ua)
+
+	info.Id = id
+	if info.Created == 0 {
+		info.Created = time.Now().Unix()
+	}
+
+	info.Extra = extra
+
+	// обновляем данные в бд
+	c.Cache.Set(id, info)
+
+	return
+}
+
