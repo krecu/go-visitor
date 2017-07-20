@@ -47,12 +47,12 @@ func (s *RpcServer) GetVisitor(ctx context.Context, in *pb.VisitorRequest) (*pb.
 		}
 
 		if Conf.Refresh {
-			info, err := Core.Refresh(in.GetId(), in.GetIp(), in.GetUa(), extra);
+			info, err := Core.Refresh(in.GetId(), in.GetIp(), in.GetUa(), extra)
 			if err == nil {
 				jsonData, err = json.Marshal(info)
 			}
 		} else {
-			info, err := Core.Get(in.GetId(), in.GetIp(), in.GetUa(), extra);
+			info, err := Core.Get(in.GetId(), in.GetIp(), in.GetUa(), extra)
 			if err == nil {
 
 				jsonData, err = json.Marshal(info)
@@ -95,12 +95,12 @@ func (s *RpcServer) PutVisitor(ctx context.Context, in *pb.VisitorRequest) (*pb.
 		}
 
 		if Conf.Refresh {
-			info, err := Core.Refresh(in.GetId(), in.GetIp(), in.GetUa(), extra);
+			info, err := Core.Refresh(in.GetId(), in.GetIp(), in.GetUa(), extra)
 			if err == nil {
 				jsonData, err = json.Marshal(info)
 			}
 		} else {
-			info, err := Core.Put(in.GetId(), in.GetIp(), in.GetUa(), extra);
+			info, err := Core.Put(in.GetId(), in.GetIp(), in.GetUa(), extra)
 			if err == nil {
 				jsonData, err = json.Marshal(info)
 			}
@@ -162,13 +162,12 @@ func main()  {
 
 	runtime.GOMAXPROCS(Conf.Cpu)
 
-	if !Conf.Debug {
-		log.SetOutput(&lumberjack.Logger{
-			Filename:   Conf.Log,
-			MaxSize:    500,
-			MaxBackups: 3,
-		})
-	}
+
+	log.SetOutput(&lumberjack.Logger{
+		Filename:   Conf.Log,
+		MaxSize:    500,
+		MaxBackups: 3,
+	})
 
 	cacheProvider := cache.New(Conf.AeroSpike.Host, Conf.AeroSpike.Port, Conf.AeroSpike.Ns, Conf.AeroSpike.Db, Conf.AeroSpike.Timeout, Conf.AeroSpike.Ttl)
 	defer cacheProvider.Close()

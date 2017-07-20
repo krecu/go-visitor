@@ -30,6 +30,7 @@ type Config struct {
 	Buffer  int
 	Db 	string
 	Refresh bool
+	Path 	string
 	Logger ConfGrayLog
 	AeroSpike ConfAeroSpike
 }

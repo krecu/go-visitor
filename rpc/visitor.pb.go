@@ -118,6 +118,7 @@ const _ = grpc.SupportPackageIsVersion4
 type GreeterClient interface {
 	// Sends a greeting
 	GetVisitor(ctx context.Context, in *VisitorRequest, opts ...grpc.CallOption) (*VisitorReply, error)
+	PutVisitor(ctx context.Context, in *VisitorRequest, opts ...grpc.CallOption) (*VisitorReply, error)
 }
 
 type greeterClient struct {

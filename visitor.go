@@ -5,13 +5,14 @@ import (
 	"github.com/krecu/go-visitor/model"
 	"errors"
 	"time"
-	"fmt"
 	"github.com/avct/uasurfer"
 	"github.com/oschwald/geoip2-golang"
 	"github.com/mirrr/go-sypexgeo"
 	"net"
 	"github.com/CossackPyra/pyraconv"
 	"sync"
+	memCache "github.com/patrickmn/go-cache"
+	"log"
 )
 
 
@@ -19,6 +20,7 @@ type Visitor struct {
 	sync.RWMutex
 	Path string
 	Cache map[string]interface{}
+	MCache *memCache.Cache
 	Debug bool
 	Buffer int
 	Processor map[string]interface{}
@@ -48,6 +50,7 @@ func New(debug bool, path string, buffer int) (info *Visitor, err error) {
 		Path: path,
 		Buffer: buffer,
 		Processor: processors,
+		MCache: memCache.New(1 * time.Minute, 15 * time.Minute),
 		Cache: make(map[string]interface{}),
 	}
 
@@ -60,22 +63,15 @@ func New(debug bool, path string, buffer int) (info *Visitor, err error) {
 func (v *Visitor) Close() {
 	v.Processor["maxmind"].(*geoip2.Reader).Close()
 	v.Cache = make(map[string]interface{})
+	v.MCache.Flush()
+
 }
 
 /**
  Add to cache
  */
 func (v *Visitor) SetCache(key string, val interface{}) {
-	v.Lock()
-
-	if len(v.Cache) > v.Buffer {
-		v.Cache = make(map[string]interface{})
-		v.Cache[key] = val
-	} else {
-		v.Cache[key] = val
-	}
-
-	v.Unlock()
+	v.MCache.Set(key, val, 15 * time.Minute)
 }
 
 /**
@@ -83,10 +79,7 @@ func (v *Visitor) SetCache(key string, val interface{}) {
  */
 func (v *Visitor) GetCache(key string) (val interface{}) {
 
-	v.RLock()
-	defer v.RUnlock()
-
-	val, ok := v.Cache[key]; if !ok {
+	val, ok := v.MCache.Get(key); if !ok {
 		val = nil
 	}
 	return
@@ -115,9 +108,11 @@ func (v *Visitor) Identify (ip string, ua string) (visitor model.Visitor, err er
 		visitor.Postal, _ = v.GetPostal(ip)
 	}
 
-	if v.Debug {
-		fmt.Println("Identify: Execute time " + time.Since(total).String())
-	}
+
+	log.Printf("=======================\r\nIdentify:\r\n" +
+			  "- IP:%s\r\n" +
+			  "- UA:%s\r\n" +
+			  "Execute time: %s\r\n=======================\r\n", ip, ua, time.Since(total).String())
 
 	return
 }
@@ -143,7 +138,7 @@ func (v *Visitor) GetSyPexGeo(ip string) (info map[string]interface{}, err error
 	}
 
 	if v.Debug {
-		fmt.Println("GetSyPexGeo: Execute time " + time.Since(total).String())
+		log.Println("GetSyPexGeo: Execute time " + time.Since(total).String())
 	}
 	return
 }
@@ -167,7 +162,7 @@ func (v *Visitor) GetMaxMind(ip string) (info *geoip2.City, err error) {
 	}
 
 	if v.Debug {
-		fmt.Println("GetMaxMind: Execute time " + time.Since(total).String())
+		log.Println("GetMaxMind: Execute time " + time.Since(total).String())
 	}
 	return
 }
@@ -193,7 +188,7 @@ func (v *Visitor) GetBrowsCap(ua string) (browscap *browscap_go.Browser, err err
 	}
 
 	if v.Debug {
-		fmt.Println("GetBrowsCap: Execute time " + time.Since(total).String())
+		log.Println("GetBrowsCap: Execute time " + time.Since(total).String())
 	}
 	return
 }
@@ -317,7 +312,7 @@ func (v *Visitor) GetBrowser(ua string) (browser model.Browser, err error) {
 	}
 
 	if v.Debug {
-		fmt.Println("GetBrowser: Execute time " + time.Since(total).String())
+		log.Println("GetBrowser: Execute time " + time.Since(total).String())
 	}
 	return
 }
@@ -338,7 +333,7 @@ func (v *Visitor) GetPlatform(ua string) (platform model.Platform, err error) {
 	}
 
 	if v.Debug {
-		fmt.Println("GetPlatform: Execute time " + time.Since(total).String())
+		log.Println("GetPlatform: Execute time " + time.Since(total).String())
 	}
 	return
 }
@@ -394,7 +389,7 @@ func (v *Visitor) GetDevice(ua string) (device model.Device, err error) {
 	}
 
 	if v.Debug {
-		fmt.Println("GetDevice: Execute time " + time.Since(total).String())
+		log.Println("GetDevice: Execute time " + time.Since(total).String())
 	}
 	return
 }
@@ -411,7 +406,7 @@ func (v *Visitor) GetPersonal(ua string) (personal model.Personal, err error) {
 	}
 
 	if v.Debug {
-		fmt.Println("GetPlatform: Execute time " + time.Since(total).String())
+		log.Println("GetPlatform: Execute time " + time.Since(total).String())
 	}
 
 	return
@@ -429,7 +424,7 @@ func (v *Visitor) GetIp(ips string) (ip model.Ip, err error) {
 	}
 
 	if v.Debug {
-		fmt.Println("GetIp: Execute time " + time.Since(total).String())
+		log.Println("GetIp: Execute time " + time.Since(total).String())
 	}
 
 	return

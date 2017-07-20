@@ -3,7 +3,6 @@ package model
 
 type Raw struct {
 	Id string
-	LinkKey string
 	Created uint
 	Updated uint
 	City map[string]interface{}
@@ -15,4 +14,5 @@ type Raw struct {
 	Device map[string]interface{}
 	Platform map[string]interface{}
 	Ip map[string]interface{}
+	Extra map[string]interface{}
 }
