@@ -1,0 +1,45 @@
+app:
+  system:
+      cpu: 4
+      LogFile: "/var/log/php/web_stats.log"
+      mode: "debug"
+      instance: "videonow-local-storage"
+      DebugLevel: 8
+  graylog:
+      host: "192.168.0.48"
+      port: 12201
+  server:
+    grpc:
+        listen: ":8081"
+    http:
+        listen: ":8082"
+        ReadTimeout: 5
+        WriteTimeout: 5
+        MaxHeaderBytes: 32000
+        cors:
+            AllowedOrigins: ["*"]
+            AllowCredentials: true
+            AllowedMethods: ["GET", "POST", "PATCH", "DELETE"]
+            AllowedHeaders: ["*"]
+            MaxAge: 1
+            Debug: false
+            OptionsPassthrough: false
+  cache:
+    DefaultExpiration: 10
+    CleanupInterval: 30
+  aerospike:
+    Hosts:
+      - 192.168.0.2:3000
+      - 192.168.0.5:3000
+    Timeout: 5000,
+    ConnectionTimeout: 5000,
+    GetTimeout: 10,
+    WriteTimeout: 10,
+    Ttl: 0
+    Set: "users"
+    NameSpace: "visitor"
+  database:
+    SxGeoCity: "/Users/kretsu/Work/Go/src/github.com/krecu/go-visitor/db/SxGeoMax.dat"
+    MaxMind: "/Users/kretsu/Work/Go/src/github.com/krecu/go-visitor/db/GeoLite2-City.mmdb"
+    UaParser: "/Users/kretsu/Work/Go/src/github.com/krecu/go-visitor/db/uaparser.yaml"
+    BrowsCap: "/Users/kretsu/Work/Go/src/github.com/krecu/go-visitor/db/full_php_browscap.ini"
