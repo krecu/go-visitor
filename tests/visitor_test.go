@@ -1,4 +1,4 @@
-package visitor_test
+package tests
 
 import (
 	"testing"

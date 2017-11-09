@@ -2,13 +2,14 @@ package visitor_rpc_client
 
 import (
 	"encoding/json"
-	"google.golang.org/grpc"
-	"golang.org/x/net/context"
-	pb "github.com/krecu/go-visitor/rpc"
 	"log"
-	"github.com/krecu/go-visitor/model"
 	"math/rand"
 	"time"
+
+	"github.com/krecu/go-visitor/model"
+	pb "github.com/krecu/go-visitor/protoc/visitor"
+	"golang.org/x/net/context"
+	"google.golang.org/grpc"
 )
 
 type Client struct {
@@ -24,7 +25,7 @@ func New(addrs []string) (*Client, error) {
 
 func (v *Client) Random(min, max int) int {
 	rand.Seed(time.Now().Unix())
-	return rand.Intn(max - min) + min
+	return rand.Intn(max-min) + min
 }
 
 func (v *Client) RoundRobin() (addr string) {
@@ -34,38 +35,29 @@ func (v *Client) RoundRobin() (addr string) {
 }
 
 // получение на GRPC
-func (v *Client) Get(id string, ip string, ua string, extra map[string]interface{}) (proto *model.Raw, err error) {
-
-	var result *pb.VisitorReply
+func (v *Client) Get(id string) (proto *model.Raw, err error) {
 
 	conn, err := grpc.Dial(v.RoundRobin(), grpc.WithInsecure())
 	if err != nil {
-		log.Fatalf("did not connect: %v", err)
+		return
 	}
 	defer conn.Close()
 	chanel := pb.NewGreeterClient(conn)
 
-	if extra != nil {
-		extraJson, _ := json.Marshal(extra)
-		result, err = chanel.GetVisitor(context.Background(), &pb.VisitorRequest{Ip: ip, Ua: ua, Id: id, Extra: string(extraJson)}); if err != nil {
-			return
-		}
-	} else {
-		result, err = chanel.GetVisitor(context.Background(), &pb.VisitorRequest{Ip: ip, Ua: ua, Id: id, Extra: ""}); if err != nil {
-			return
-		}
+	if result, err := chanel.Get(context.Background(), &pb.GetRequest{Id: id}); err == nil {
+		err = json.Unmarshal([]byte(result.GetBody()), &proto)
 	}
-
-	err = json.Unmarshal([]byte(result.GetBody()), &proto)
 
 	return
 }
 
-// получение на GRPC
-func (v *Client) Put(id string, ip string, ua string, extra map[string]interface{}) (proto *model.Raw, err error) {
+// создание на GRPC
+func (v *Client) Post(id string, ip string, ua string, extra map[string]interface{}) (proto *model.Raw, err error) {
 
-	var result *pb.VisitorReply
-
+	var (
+		result    *pb.Reply
+		extraJson []byte
+	)
 	conn, err := grpc.Dial(v.RoundRobin(), grpc.WithInsecure())
 	if err != nil {
 		log.Fatalf("did not connect: %v", err)
@@ -74,17 +66,18 @@ func (v *Client) Put(id string, ip string, ua string, extra map[string]interface
 	chanel := pb.NewGreeterClient(conn)
 
 	if extra != nil {
-		extraJson, _ := json.Marshal(extra)
-		result, err = chanel.PutVisitor(context.Background(), &pb.VisitorRequest{Ip: ip, Ua: ua, Id: id, Extra: string(extraJson)}); if err != nil {
-			return
-		}
-	} else {
-		result, err = chanel.PutVisitor(context.Background(), &pb.VisitorRequest{Ip: ip, Ua: ua, Id: id, Extra: ""}); if err != nil {
+		extraJson, err = json.Marshal(extra)
+		if err != nil {
 			return
 		}
 	}
 
-	err = json.Unmarshal([]byte(result.GetBody()), &proto)
+	result, err = chanel.Post(context.Background(), &pb.PostRequest{Ip: ip, Ua: ua, Id: id, Extra: string(extraJson)})
+	if err != nil {
+		return
+	} else {
+		err = json.Unmarshal([]byte(result.GetBody()), &proto)
+	}
 
 	return
 }
