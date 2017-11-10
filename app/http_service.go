@@ -128,6 +128,40 @@ func (h *HttpService) Post(w http.ResponseWriter, r *http.Request) (response int
 }
 
 func (h *HttpService) Patch(w http.ResponseWriter, r *http.Request) (response interface{}, code string) {
+
+	vars := mux.Vars(r)
+	fields := make(map[string]interface{})
+
+	buf, err := ioutil.ReadAll(r.Body)
+	defer r.Body.Close()
+	if err != nil {
+		code = err.Error()
+		return
+	}
+
+	err = json.Unmarshal(buf, &fields)
+	if err != nil {
+		code = err.Error()
+		return
+	}
+
+	if fields == nil {
+		code = "0002"
+		return
+	}
+
+	if values, err := h.app.visitor.Patch(vars["id"], fields); err == nil {
+		response = values
+		code = "0000"
+	} else {
+
+		if err == VisitorErrorEmpty {
+			code = "0001"
+		} else {
+			code = err.Error()
+		}
+	}
+
 	return
 }
 

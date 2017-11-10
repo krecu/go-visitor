@@ -100,7 +100,33 @@ func (s *RpcService) Post(ctx context.Context, in *api.PostRequest) (*api.Reply,
 
 // изменение
 func (s *RpcService) Patch(ctx context.Context, in *api.PatchRequest) (*api.Reply, error) {
-	return &api.Reply{Body: "", Status: ""}, nil
+	var fields map[string]interface{}
+
+	reply := &api.Reply{}
+
+	if in.Id == "" || in.Fields == "" {
+		reply.Status = "0002"
+		return reply, nil
+	}
+
+	json.Unmarshal([]byte(in.Fields), &fields)
+
+	if values, err := s.app.visitor.Patch(in.Id, fields); err == nil {
+		if buf, err := json.Marshal(values); err == nil {
+			reply.Body = string(buf)
+		} else {
+			reply.Status = err.Error()
+		}
+		reply.Status = "0000"
+	} else {
+
+		if err == VisitorErrorEmpty {
+			reply.Status = "0001"
+		} else {
+			reply.Status = err.Error()
+		}
+	}
+	return reply, nil
 }
 
 // удаление

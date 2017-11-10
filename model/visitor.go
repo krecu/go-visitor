@@ -1,6 +1,8 @@
 package model
 
 import (
+	"fmt"
+
 	"github.com/CossackPyra/pyraconv"
 )
 
@@ -224,10 +226,39 @@ func VisitorUnMarshal(values map[string]interface{}) (proto *Visitor) {
 		proto.Extra = make(map[string]interface{})
 		for key, value := range extra {
 			if k, ok := key.(string); ok {
-				proto.Extra[k] = value
+				proto.Extra[k] = cleanupMapValue(value)
 			}
 		}
 	}
 
 	return
+}
+
+func cleanupInterfaceArray(in []interface{}) []interface{} {
+	res := make([]interface{}, len(in))
+	for i, v := range in {
+		res[i] = cleanupMapValue(v)
+	}
+	return res
+}
+
+func cleanupInterfaceMap(in map[interface{}]interface{}) map[string]interface{} {
+	res := make(map[string]interface{})
+	for k, v := range in {
+		res[fmt.Sprintf("%v", k)] = cleanupMapValue(v)
+	}
+	return res
+}
+
+func cleanupMapValue(v interface{}) interface{} {
+	switch v := v.(type) {
+	case []interface{}:
+		return cleanupInterfaceArray(v)
+	case map[interface{}]interface{}:
+		return cleanupInterfaceMap(v)
+	case string:
+		return v
+	default:
+		return fmt.Sprintf("%v", v)
+	}
 }

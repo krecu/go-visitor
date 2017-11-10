@@ -7,10 +7,12 @@ import (
 
 	"net"
 
+	"encoding/json"
+
 	"github.com/CossackPyra/pyraconv"
 	"github.com/aerospike/aerospike-client-go"
 	"github.com/avct/uasurfer"
-	"github.com/k0kubun/pp"
+	"github.com/imdario/mergo"
 	"github.com/krecu/browscap_go"
 	"github.com/krecu/go-visitor/model"
 )
@@ -230,45 +232,7 @@ func (v *VisitorService) Post(id string, ip string, ua string, extra map[string]
 	proto.Debug.TimeTotal = time.Since(_total).String()
 
 	// сораняем в БД
-	go func(cache *aerospike.Client, data *model.Visitor, ns string, set string, timeout time.Duration, ttl uint32) {
-
-		var (
-			key *aerospike.Key
-			err error
-		)
-
-		if !cache.IsConnected() {
-			err = fmt.Errorf("Нет соединения с хранилищем ")
-			return
-		}
-
-		// преобразуем структуру в массив
-		record := model.VisitorMarshal(proto)
-
-		policy := aerospike.NewWritePolicy(0, aerospike.TTLServerDefault)
-		policy.Priority = aerospike.HIGH
-		policy.Timeout = timeout
-		if ttl == 0 {
-			policy.Expiration = aerospike.TTLDontExpire
-		} else {
-			policy.Expiration = ttl
-		}
-
-		key, err = aerospike.NewKey(
-			ns,
-			set,
-			proto.Id,
-		)
-		if err != nil {
-			Logger.Error(err)
-			return
-		}
-
-		err = cache.Put(policy, key, record)
-		if err != nil {
-			Logger.Error(err)
-		}
-	}(
+	go v.Save(
 		v.app.aerospike,
 		proto,
 		v.app.config.GetString("app.aerospike.NameSpace"),
@@ -281,8 +245,40 @@ func (v *VisitorService) Post(id string, ip string, ua string, extra map[string]
 }
 
 // изменение
-func (v *VisitorService) Patch(id string, fields map[string]interface{}) {
-	pp.Println(id, fields)
+func (v *VisitorService) Patch(id string, fields map[string]interface{}) (proto *model.Visitor, err error) {
+
+	var mapProto map[string]interface{}
+
+	proto, err = v.Get(id)
+	if err != nil {
+		return
+	} else {
+		if proto == nil {
+			err = VisitorErrorEmpty
+			return
+		}
+	}
+
+	if bufProto, err := json.Marshal(proto); err == nil {
+		if err = json.Unmarshal(bufProto, &mapProto); err == nil {
+			if err = mergo.Merge(&fields, mapProto); err == nil {
+				if bufProto, err := json.Marshal(fields); err == nil {
+					if err = json.Unmarshal(bufProto, &proto); err == nil {
+						go v.Save(
+							v.app.aerospike,
+							proto,
+							v.app.config.GetString("app.aerospike.NameSpace"),
+							v.app.config.GetString("app.aerospike.Set"),
+							v.app.config.GetDuration("app.aerospike.WriteTimeout")*time.Millisecond,
+							uint32(v.app.config.GetInt("app.aerospike.Ttl")),
+						)
+					}
+				}
+			}
+		}
+	}
+
+	return
 }
 
 // удаление
@@ -311,5 +307,47 @@ func (v *VisitorService) Delete(id string) (err error) {
 	}
 
 	_, err = v.app.aerospike.Delete(policy, key)
+	return
+}
+
+// удаление
+func (v *VisitorService) Save(cache *aerospike.Client, proto *model.Visitor, ns string, set string, timeout time.Duration, ttl uint32) (err error) {
+
+	var (
+		key *aerospike.Key
+	)
+
+	if !cache.IsConnected() {
+		err = fmt.Errorf("Нет соединения с хранилищем ")
+		return
+	}
+
+	// преобразуем структуру в массив
+	record := model.VisitorMarshal(proto)
+
+	policy := aerospike.NewWritePolicy(0, aerospike.TTLServerDefault)
+	policy.Priority = aerospike.HIGH
+	policy.Timeout = timeout
+	if ttl == 0 {
+		policy.Expiration = aerospike.TTLDontExpire
+	} else {
+		policy.Expiration = ttl
+	}
+
+	key, err = aerospike.NewKey(
+		ns,
+		set,
+		proto.Id,
+	)
+	if err != nil {
+		Logger.Error(err)
+		return
+	}
+
+	err = cache.Put(policy, key, record)
+	if err != nil {
+		Logger.Error(err)
+	}
+
 	return
 }

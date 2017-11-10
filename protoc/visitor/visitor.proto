@@ -35,10 +35,8 @@ message PostRequest {
 
 // The request message containing the user's name.
 message PatchRequest {
-  string ip = 1;
-  string ua = 2;
   string id = 3;
-  string extra = 4;
+  string fields = 4;
 }
 
 // The response message containing the greetings
