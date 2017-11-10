@@ -39,7 +39,6 @@ app:
     Set: "users"
     NameSpace: "visitor"
   database:
-    SxGeoCity: "/Users/kretsu/Work/Go/src/github.com/krecu/go-visitor/db/SxGeoMax.dat"
-    MaxMind: "/Users/kretsu/Work/Go/src/github.com/krecu/go-visitor/db/GeoLite2-City.mmdb"
-    UaParser: "/Users/kretsu/Work/Go/src/github.com/krecu/go-visitor/db/uaparser.yaml"
-    BrowsCap: "/Users/kretsu/Work/Go/src/github.com/krecu/go-visitor/db/full_php_browscap.ini"
+    SxGeoCity: "/Users/kretsu/Work/Go/src/github.com/krecu/go-visitor/databases/SxGeoMax.dat"
+    MaxMind: "/Users/kretsu/Work/Go/src/github.com/krecu/go-visitor/databases/GeoLite2-City.mmdb"
+    BrowsCap: "/Users/kretsu/Work/Go/src/github.com/krecu/go-visitor/databases/full_php_browscap.ini"
