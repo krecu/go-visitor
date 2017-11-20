@@ -5,6 +5,8 @@ import (
 
 	"encoding/json"
 
+	"time"
+
 	"github.com/CossackPyra/pyraconv"
 	api "github.com/krecu/go-visitor/protoc/visitor"
 	"golang.org/x/net/context"
@@ -44,7 +46,10 @@ func (s *RpcService) Start() {
 // получение
 func (s *RpcService) Get(ctx context.Context, in *api.GetRequest) (*api.Reply, error) {
 
+	_total := time.Now()
+
 	reply := &api.Reply{}
+
 	if values, err := s.app.visitor.Get(pyraconv.ToString(in.Id)); err == nil {
 
 		if values == nil {
@@ -63,11 +68,14 @@ func (s *RpcService) Get(ctx context.Context, in *api.GetRequest) (*api.Reply, e
 		reply.Status = err.Error()
 	}
 
+	Logger.Debugf("Get: %s", time.Since(_total))
 	return reply, nil
 }
 
 // создание
 func (s *RpcService) Post(ctx context.Context, in *api.PostRequest) (*api.Reply, error) {
+
+	_total := time.Now()
 
 	var extra map[string]interface{}
 
@@ -95,6 +103,9 @@ func (s *RpcService) Post(ctx context.Context, in *api.PostRequest) (*api.Reply,
 			reply.Status = err.Error()
 		}
 	}
+
+	Logger.Debugf("Indent: %s", time.Since(_total))
+
 	return reply, nil
 }
 

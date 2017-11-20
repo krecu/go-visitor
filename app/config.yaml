@@ -29,15 +29,15 @@ app:
     CleanupInterval: 30
   aerospike:
     Hosts:
-      - 192.168.0.2:3000
-      - 192.168.0.5:3000
+      - 127.0.0.1:3000
+      - 127.0.0.1:3000
     Timeout: 5000,
     ConnectionTimeout: 5000,
     GetTimeout: 10,
     WriteTimeout: 10,
     Ttl: 0
-    Set: "users"
-    NameSpace: "visitor"
+    Set: "visitor"
+    NameSpace: "users"
   database:
     SxGeoCity: "/Users/kretsu/Work/Go/src/github.com/krecu/go-visitor/databases/SxGeoMax.dat"
     MaxMind: "/Users/kretsu/Work/Go/src/github.com/krecu/go-visitor/databases/GeoLite2-City.mmdb"
