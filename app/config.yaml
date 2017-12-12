@@ -10,8 +10,10 @@ app:
       port: 12201
   server:
     grpc:
+        enable: true
         listen: ":8081"
     http:
+        enable: false
         listen: ":8082"
         ReadTimeout: 5
         WriteTimeout: 5

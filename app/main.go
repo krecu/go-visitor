@@ -80,8 +80,13 @@ func main() {
 	// стартуем приложение
 	go Application.Start()
 
-	CmdTrigger <- "start-rpc"
-	CmdTrigger <- "start-http"
+	if Config.GetBool("app.server.grpc.enable") {
+		CmdTrigger <- "start-rpc"
+	}
+
+	if Config.GetBool("app.server.http.enable") {
+		CmdTrigger <- "start-http"
+	}
 
 	select {}
 }

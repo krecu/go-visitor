@@ -9,6 +9,7 @@ import (
 
 	"github.com/CossackPyra/pyraconv"
 	api "github.com/krecu/go-visitor/protoc/visitor"
+	"github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
@@ -68,7 +69,11 @@ func (s *RpcService) Get(ctx context.Context, in *api.GetRequest) (*api.Reply, e
 		reply.Status = err.Error()
 	}
 
-	Logger.Debugf("Get: %s", time.Since(_total))
+	Logger.WithFields(logrus.Fields{
+		"op":       "Get",
+		"duration": time.Since(_total).Seconds(),
+	}).Debugf("Get: %f", time.Since(_total).Seconds())
+
 	return reply, nil
 }
 
@@ -104,13 +109,19 @@ func (s *RpcService) Post(ctx context.Context, in *api.PostRequest) (*api.Reply,
 		}
 	}
 
-	Logger.Debugf("Indent: %s", time.Since(_total))
+	Logger.WithFields(logrus.Fields{
+		"op":       "Indent",
+		"duration": time.Since(_total).Seconds(),
+	}).Debugf("Indent: %f", time.Since(_total).Seconds())
 
 	return reply, nil
 }
 
 // изменение
 func (s *RpcService) Patch(ctx context.Context, in *api.PatchRequest) (*api.Reply, error) {
+
+	_total := time.Now()
+
 	var fields map[string]interface{}
 
 	reply := &api.Reply{}
@@ -137,11 +148,19 @@ func (s *RpcService) Patch(ctx context.Context, in *api.PatchRequest) (*api.Repl
 			reply.Status = err.Error()
 		}
 	}
+
+	Logger.WithFields(logrus.Fields{
+		"op":       "Patch",
+		"duration": time.Since(_total).Seconds(),
+	}).Debugf("Patch: %f", time.Since(_total).Seconds())
+
 	return reply, nil
 }
 
 // удаление
 func (s *RpcService) Delete(ctx context.Context, in *api.DeleteRequest) (*api.Reply, error) {
+
+	_total := time.Now()
 
 	reply := &api.Reply{}
 
@@ -150,6 +169,11 @@ func (s *RpcService) Delete(ctx context.Context, in *api.DeleteRequest) (*api.Re
 	} else {
 		reply.Status = "0000"
 	}
+
+	Logger.WithFields(logrus.Fields{
+		"op":       "Delete",
+		"duration": time.Since(_total).Seconds(),
+	}).Debugf("Delete: %f", time.Since(_total).Seconds())
 
 	return reply, nil
 }
