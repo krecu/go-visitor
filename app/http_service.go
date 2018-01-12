@@ -13,6 +13,7 @@ import (
 	"github.com/CossackPyra/pyraconv"
 	"github.com/gorilla/mux"
 	"github.com/rs/cors"
+	"github.com/sirupsen/logrus"
 )
 
 type HttpService struct {
@@ -66,6 +67,9 @@ func (h *HttpService) Start() {
 
 // получение модели
 func (h *HttpService) Get(w http.ResponseWriter, r *http.Request) (response interface{}, code string) {
+
+	_total := time.Now()
+
 	vars := mux.Vars(r)
 
 	if values, err := h.app.visitor.Get(pyraconv.ToString(vars["id"])); err == nil {
@@ -84,10 +88,17 @@ func (h *HttpService) Get(w http.ResponseWriter, r *http.Request) (response inte
 		}
 	}
 
+	Logger.WithFields(logrus.Fields{
+		"op":       "Get",
+		"duration": time.Since(_total).Seconds(),
+	}).Debugf("Get: %f", time.Since(_total).Seconds())
+
 	return
 }
 
 func (h *HttpService) Post(w http.ResponseWriter, r *http.Request) (response interface{}, code string) {
+
+	_total := time.Now()
 
 	buf, err := ioutil.ReadAll(r.Body)
 	defer r.Body.Close()
@@ -124,10 +135,18 @@ func (h *HttpService) Post(w http.ResponseWriter, r *http.Request) (response int
 			code = err.Error()
 		}
 	}
+
+	Logger.WithFields(logrus.Fields{
+		"op":       "Indent",
+		"duration": time.Since(_total).Seconds(),
+	}).Debugf("Indent: %f", time.Since(_total).Seconds())
+
 	return
 }
 
 func (h *HttpService) Patch(w http.ResponseWriter, r *http.Request) (response interface{}, code string) {
+
+	_total := time.Now()
 
 	vars := mux.Vars(r)
 	fields := make(map[string]interface{})
@@ -162,11 +181,19 @@ func (h *HttpService) Patch(w http.ResponseWriter, r *http.Request) (response in
 		}
 	}
 
+	Logger.WithFields(logrus.Fields{
+		"op":       "Patch",
+		"duration": time.Since(_total).Seconds(),
+	}).Debugf("Patch: %f", time.Since(_total).Seconds())
+
 	return
 }
 
 // удаление модели
 func (h *HttpService) Delete(w http.ResponseWriter, r *http.Request) (response interface{}, code string) {
+
+	_total := time.Now()
+
 	vars := mux.Vars(r)
 
 	if err := h.app.visitor.Delete(pyraconv.ToString(vars["id"])); err != nil {
@@ -175,12 +202,18 @@ func (h *HttpService) Delete(w http.ResponseWriter, r *http.Request) (response i
 		code = "0000"
 	}
 
+	Logger.WithFields(logrus.Fields{
+		"op":       "Delete",
+		"duration": time.Since(_total).Seconds(),
+	}).Debugf("Delete: %f", time.Since(_total).Seconds())
+
 	return
 }
 
 // хендлер для ловли ошибок
 func (h *HttpService) Response(f func(http.ResponseWriter, *http.Request) (result interface{}, code string)) func(w http.ResponseWriter, r *http.Request) {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+
 		result, code := f(w, r)
 		w.Header().Set("Content-Type", "application/json")
 
@@ -203,5 +236,6 @@ func (h *HttpService) Response(f func(http.ResponseWriter, *http.Request) (resul
 		response["result"] = result
 
 		w.Write([]byte(helper.Marshal(response)))
+
 	})
 }

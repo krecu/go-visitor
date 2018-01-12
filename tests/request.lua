@@ -21,7 +21,7 @@ end
 
 function randUa()
     lines = {}
-    for line in io.lines("/Users/kretsu/Work/Go/src/github.com/krecu/go-visitor/fixtures/user-agent.txt") do
+    for line in io.lines("/Users/kretsu/Work/Go/src/github.com/krecu/go-visitor/tests/fixtures/user-agent.txt") do
         table.insert(lines, line)
     end
 

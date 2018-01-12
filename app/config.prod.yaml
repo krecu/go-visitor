@@ -10,9 +10,11 @@ app:
       port: 12201
   server:
     grpc:
-        listen: ":8081"
+        enable: true
+        listen: ":5556"
     http:
-        listen: ":8082"
+        enable: true
+        listen: ":50052"
         ReadTimeout: 5
         WriteTimeout: 5
         MaxHeaderBytes: 32000

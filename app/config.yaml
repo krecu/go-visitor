@@ -13,10 +13,10 @@ app:
         enable: true
         listen: ":8081"
     http:
-        enable: false
+        enable: true
         listen: ":8082"
-        ReadTimeout: 5
-        WriteTimeout: 5
+        ReadTimeout: 50
+        WriteTimeout: 50
         MaxHeaderBytes: 32000
         cors:
             AllowedOrigins: ["*"]
@@ -33,13 +33,13 @@ app:
     Hosts:
       - 127.0.0.1:3000
       - 127.0.0.1:3000
-    Timeout: 5000,
-    ConnectionTimeout: 5000,
-    GetTimeout: 10,
-    WriteTimeout: 10,
+    Timeout: 100,
+    ConnectionTimeout: 100,
+    GetTimeout: 100,
+    WriteTimeout: 100,
     Ttl: 0
-    Set: "visitor"
-    NameSpace: "users"
+    Set: "users"
+    NameSpace: "test"
   database:
     SxGeoCity: "/Users/kretsu/Work/Go/src/github.com/krecu/go-visitor/databases/SxGeoMax.dat"
     MaxMind: "/Users/kretsu/Work/Go/src/github.com/krecu/go-visitor/databases/GeoLite2-City.mmdb"

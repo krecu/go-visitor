@@ -232,7 +232,7 @@ func (v *VisitorService) Post(id string, ip string, ua string, extra map[string]
 	proto.Debug.TimeTotal = time.Since(_total).String()
 
 	// сораняем в БД
-	go v.Save(
+	v.Save(
 		v.app.aerospike,
 		proto,
 		v.app.config.GetString("app.aerospike.NameSpace"),
