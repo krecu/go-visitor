@@ -25,6 +25,6 @@ sed -e "s&{APP_ROOT_PATH}&$APP_ROOT_PATH&g" \
     -e "s&{APP_WEB_ADDR}&$APP_WEB_ADDR&g" \
     -e "s&{APP_GRPC_ADDR}&$APP_GRPC_ADDR&g" \
     -e "s&{APP_DEBUG_LEVEL}&$APP_DEBUG_LEVEL&g" \
-    -e "s&{APP_CPU}&$APP_CPU=&g" \
+    -e "s&{APP_CPU}&$APP_CPU&g" \
     ./app/config.default.yaml >> ./build/config.yaml
 docker build -t $APP_CONTAINER_NAME .
