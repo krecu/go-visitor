@@ -31,13 +31,13 @@ end
 request = function()
 
     ip = randIpv4()
-    ua = randUa()
+    ua = "Mozilla/5.0 (Darwin; FreeBSD 5.6; en-GB; rv:1.9.1b3pre)Gecko/20081211 K-Meleon/1.5.2"
 
     wrk.method = "POST"
     wrk.body   = "{\"id\":\"" .. randInteger(10000, 100000000) .. "\",\"ip\":\"" .. ip .. "\",\"ua\":\"" .. ua .. "\"}"
     wrk.headers["Content-Type"] = "application/json"
 
-    path = "/api/visitor"
+    path = "/"
 
     return wrk.format(nil, path)
 end

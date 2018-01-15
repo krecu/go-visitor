@@ -1,0 +1,47 @@
+app:
+  system:
+      cpu: {APP_CPU}
+      LogFile: "{APP_ROOT_PATH}/debug.log"
+      mode: "{APP_ENV}"
+      instance: "videonow-visitor-{APP_ENV}"
+      DebugLevel: {APP_DEBUG_LEVEL}
+  graylog:
+      host: "{APP_GRAYLOG}"
+      port: 12201
+  server:
+    grpc:
+        enable: true
+        listen: "{APP_GRPC_ADDR}"
+    http:
+        enable: true
+        listen: "{APP_WEB_ADDR}"
+        ReadTimeout: 5
+        WriteTimeout: 5
+        MaxHeaderBytes: 32000
+        cors:
+            AllowedOrigins: ["*"]
+            AllowCredentials: true
+            AllowedMethods: ["GET", "POST", "PATCH", "DELETE"]
+            AllowedHeaders: ["*"]
+            MaxAge: 1
+            Debug: false
+            OptionsPassthrough: false
+  cache:
+    DefaultExpiration: 10
+    CleanupInterval: 30
+  aerospike:
+    Hosts:
+      - {APP_AEROSPIKE_NODE_1}:3000
+      - {APP_AEROSPIKE_NODE_2}:3000
+    Timeout: 5000,
+    ConnectionTimeout: 5000,
+    GetTimeout: 10,
+    WriteTimeout: 10,
+    Ttl: 0
+    Set: "users"
+    NameSpace: "visitor"
+  database:
+    SxGeoCity: "{APP_DB_PATH}/SxGeoMax.dat"
+    MaxMind: "{APP_DB_PATH}/GeoLite2-City.mmdb"
+    UaParser: "{APP_DB_PATH}/uaparser.yaml"
+    BrowsCap: "{APP_DB_PATH}/full_php_browscap.ini"
