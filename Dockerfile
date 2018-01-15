@@ -1,4 +1,4 @@
-FROM alpine:3.6
+FROM golang:latest
 
 EXPOSE 8091:8090
 EXPOSE 8092:8091

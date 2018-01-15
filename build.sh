@@ -15,7 +15,7 @@ APP_CONTAINER_NAME=videonow/visitor:$APP_ENV
 rm -rf ./build/visitor
 rm -rf ./build/config.yaml
 
-docker run --rm -v "$PWD"/build:/build -v "$PWD"/app:/go/src/app -w /go/src/app -e GOOS=linux -e OUTPUT=/build -e GOARCH=386 golang:1.8 make linux
+docker run --rm -v "$PWD"/build:/build -v "$PWD"/app:/go/src/app -w /go/src/app -e GOOS=linux -e OUTPUT=/build -e GOARCH=amd64 golang:latest make linux
 sed -e "s&{APP_ROOT_PATH}&$APP_ROOT_PATH&g" \
     -e "s&{APP_DB_PATH}&$APP_DB_PATH&g" \
     -e "s&{APP_ENV}&$APP_ENV&g" \
