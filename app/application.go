@@ -54,10 +54,7 @@ func NewApplication(config *viper.Viper) (proto *App, err error) {
 		config.GetDuration("app.cache.CleanupInterval")*time.Minute,
 	)
 
-	proto.sypexgeo, err = sypexgeo.New(config.GetString("app.database.SxGeoCity"))
-	if err != nil {
-		return
-	}
+	proto.sypexgeo = sypexgeo.New(config.GetString("app.database.SxGeoCity"))
 
 	proto.maxmind, err = geoip2.Open(config.GetString("app.database.MaxMind"))
 	if err != nil {

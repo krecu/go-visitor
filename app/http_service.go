@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"go-stats/app/core/helper"
 	"net/http"
 	"time"
 
@@ -235,7 +234,9 @@ func (h *HttpService) Response(f func(http.ResponseWriter, *http.Request) (resul
 		response["error"] = code
 		response["result"] = result
 
-		w.Write([]byte(helper.Marshal(response)))
+		jsonData, _ := json.Marshal(response)
+
+		w.Write(jsonData)
 
 	})
 }

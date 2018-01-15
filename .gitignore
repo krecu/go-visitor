@@ -1,4 +1,5 @@
 app/config.yaml
+app/vendor/*
 databases/*
 build/*
 .idea
