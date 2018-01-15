@@ -16,7 +16,7 @@ rm -rf ./build/visitor
 rm -rf ./build/config.yaml
 
 GOOS=linux GOARCH=amd64 go build -o ./build/visitor ./app
-sed -e "s&{APP_PATH}&$APP_ROOT_PATH&g" \
+sed -e "s&{APP_ROOT_PATH}&$APP_ROOT_PATH&g" \
     -e "s&{APP_DB_PATH}&$APP_DB_PATH&g" \
     -e "s&{APP_ENV}&$APP_ENV&g" \
     -e "s&{APP_AEROSPIKE_NODE_1}&$APP_AEROSPIKE_NODE_1&g" \
