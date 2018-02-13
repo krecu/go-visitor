@@ -2,13 +2,13 @@ package tests
 
 import (
 	"testing"
-	"github.com/krecu/go-visitor"
 	"os"
 	"bufio"
 	"math/rand"
 	"github.com/Pallinder/go-randomdata"
 	"time"
 	"fmt"
+	"github.com/krecu/go-visitor/client/rpc-client"
 )
 
 const (
@@ -16,108 +16,10 @@ const (
 	IP = "79.104.42.249"
 )
 
-func TestVisitor_GetCity(t *testing.T) {
-
-	v, _ := visitor.New()
-	v.Debug = true
-
-	info, err := v.GetCity(IP)
-
-	if err != nil || info.Name == "" {
-		t.Fatal(info)
-	} else {
-		t.Log(info)
-	}
-}
-
-func TestVisitor_GetCountry(t *testing.T) {
-
-	v, _ := visitor.New()
-	v.Debug = true
-
-	info, err := v.GetCountry(IP)
-
-	if err != nil || info.Name == "" {
-		t.Fatal(info)
-	} else {
-		t.Log(info)
-	}
-}
-
-func TestVisitor_GetRegion(t *testing.T) {
-
-	v, _ := visitor.New()
-	v.Debug = true
-
-	info, err := v.GetRegion(IP)
-
-	if err != nil || info.Name == "" {
-		t.Fatal(info)
-	} else {
-		t.Log(info)
-	}
-}
-
-func TestVisitor_GetLocation(t *testing.T) {
-
-	v, _ := visitor.New()
-	v.Debug = true
-
-	info, err := v.GetLocation(IP)
-
-	if err != nil {
-		t.Fatal(info)
-	} else {
-		t.Log(info)
-	}
-}
-
-func TestVisitor_GetPostal(t *testing.T) {
-
-	v, _ := visitor.New()
-	v.Debug = true
-
-	info, err := v.GetPostal(IP)
-
-	if err != nil {
-		t.Fatal(info)
-	} else {
-		t.Log(info)
-	}
-}
-
-func TestVisitor_GetBrowser(t *testing.T) {
-
-	v, _ := visitor.New()
-	v.Debug = true
-
-	info, err := v.GetBrowser(UA)
-
-	if err != nil || info.Name == ""  {
-		t.Fatal(info)
-	} else {
-		t.Log(info)
-	}
-}
-
-func TestVisitor_GetDevice(t *testing.T) {
-
-	v, _ := visitor.New()
-	v.Debug = true
-
-	info, err := v.GetDevice(UA)
-
-	if err != nil || info.Name == "" {
-		t.Fatal(info)
-	} else {
-		t.Log(info)
-	}
-}
 
 func TestVisitor_Identify(t *testing.T) {
 
-	v, _ := visitor.New()
-	v.Debug = true
+	v, _ := visitor_rpc_client.New([]string{"127.0.0.1:8081"})
 
 	file, err := os.Open("./fixtures/user-agent.txt"); if err != nil {
 		t.Fatal(err)
@@ -130,11 +32,10 @@ func TestVisitor_Identify(t *testing.T) {
 		lines = append(lines, scanner.Text())
 	}
 
-	rand.Seed(420)
+	rand.Seed(time.Now().UnixNano())
 
 	total := time.Now()
-
-	info, err := v.Identify(randomdata.IpV4Address(), lines[rand.Intn(len(lines))])
+	info, err := v.Post("test_user", randomdata.IpV4Address(), lines[rand.Intn(len(lines))], nil)
 	fmt.Println("Identify: Execute time " + time.Since(total).String())
 
 	if err != nil {
@@ -144,7 +45,7 @@ func TestVisitor_Identify(t *testing.T) {
 
 
 func BenchmarkVisitor_Identify(b *testing.B) {
-	v, _ := visitor.New()
+	v, _ := visitor_rpc_client.New([]string{"127.0.0.1:8081"})
 
 	file, err := os.Open("./fixtures/user-agent.txt"); if err != nil {
 		b.Fatal(err)
@@ -157,11 +58,11 @@ func BenchmarkVisitor_Identify(b *testing.B) {
 		lines = append(lines, scanner.Text())
 	}
 
-	rand.Seed(42)
+	rand.Seed(time.Now().UnixNano())
 
 	for n := 0; n < b.N; n++ {
 		ua := lines[rand.Intn(len(lines))]
 		ip := randomdata.IpV4Address()
-		v.Identify(ip, ua)
+		v.Post("test_user", ip, ua, nil)
 	}
 }

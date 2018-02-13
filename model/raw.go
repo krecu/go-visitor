@@ -13,5 +13,6 @@ type Raw struct {
 	Platform map[string]interface{}
 	Ip       map[string]interface{}
 	Extra    map[string]interface{}
+	Personal map[string]interface{}
 	Debug    map[string]interface{}
 }

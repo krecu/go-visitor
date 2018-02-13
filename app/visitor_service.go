@@ -12,7 +12,6 @@ import (
 	"github.com/CossackPyra/pyraconv"
 	"github.com/aerospike/aerospike-client-go"
 	"github.com/avct/uasurfer"
-	"github.com/imdario/mergo"
 	"github.com/krecu/browscap_go"
 	"github.com/krecu/go-visitor/model"
 )
@@ -102,7 +101,7 @@ func (v *VisitorService) Post(id string, ip string, ua string, extra map[string]
 			proto.Country.NameRu = pyraconv.ToString(country["name_ru"])
 			proto.Country.Iso = pyraconv.ToString(country["iso"])
 			proto.Country.Iso3166_1_alpha_3 = model.ISO_3166_1_alpha_3Mapping(pyraconv.ToString(country["iso"]))
-			proto.Country.Mapping = model.CountryMapping(proto.Country.NameRu)
+			proto.Country.Mapping = model.CountryMapping(proto.Country.Iso)
 			proto.Location.TimeZone = pyraconv.ToString(country["timezone"])
 		}
 		if region, ok := GeoData["region"].(map[string]interface{}); ok {
@@ -247,7 +246,7 @@ func (v *VisitorService) Post(id string, ip string, ua string, extra map[string]
 // изменение
 func (v *VisitorService) Patch(id string, fields map[string]interface{}) (proto *model.Visitor, err error) {
 
-	var mapProto map[string]interface{}
+	//var mapProto map[string]interface{}
 
 	proto, err = v.Get(id)
 	if err != nil {
@@ -259,24 +258,48 @@ func (v *VisitorService) Patch(id string, fields map[string]interface{}) (proto 
 		}
 	}
 
-	if bufProto, err := json.Marshal(proto); err == nil {
-		if err = json.Unmarshal(bufProto, &mapProto); err == nil {
-			if err = mergo.Merge(&fields, mapProto); err == nil {
-				if bufProto, err := json.Marshal(fields); err == nil {
-					if err = json.Unmarshal(bufProto, &proto); err == nil {
-						go v.Save(
-							v.app.aerospike,
-							proto,
-							v.app.config.GetString("app.aerospike.NameSpace"),
-							v.app.config.GetString("app.aerospike.Set"),
-							v.app.config.GetDuration("app.aerospike.WriteTimeout")*time.Millisecond,
-							uint32(v.app.config.GetInt("app.aerospike.Ttl")),
-						)
-					}
-				}
-			}
+	if _, ok := fields["extra"]; ok {
+		var buf []byte
+		buf, err = json.Marshal(fields["extra"])
+		if err == nil {
+			err = json.Unmarshal(buf, &proto.Extra)
 		}
 	}
+
+	if err == nil {
+		v.Save(
+			v.app.aerospike,
+			proto,
+			v.app.config.GetString("app.aerospike.NameSpace"),
+			v.app.config.GetString("app.aerospike.Set"),
+			v.app.config.GetDuration("app.aerospike.WriteTimeout")*time.Millisecond,
+			uint32(v.app.config.GetInt("app.aerospike.Ttl")),
+		)
+	}
+
+	return
+
+	//if bufProto, err := json.Marshal(proto); err == nil {
+	//	if err = json.Unmarshal(bufProto, &mapProto); err == nil {
+	//		if err = mergo.Merge(&fields, mapProto); err == nil {
+	//
+	//			pp.Println(fields)
+	//
+	//			if bufProto, err := json.Marshal(fields); err == nil {
+	//				if err = json.Unmarshal(bufProto, &proto); err == nil {
+	//					v.Save(
+	//						v.app.aerospike,
+	//						proto,
+	//						v.app.config.GetString("app.aerospike.NameSpace"),
+	//						v.app.config.GetString("app.aerospike.Set"),
+	//						v.app.config.GetDuration("app.aerospike.WriteTimeout")*time.Millisecond,
+	//						uint32(v.app.config.GetInt("app.aerospike.Ttl")),
+	//					)
+	//				}
+	//			}
+	//		}
+	//	}
+	//}
 
 	return
 }

@@ -10,7 +10,6 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	"gopkg.in/gemnasium/logrus-graylog-hook.v2"
-	"gopkg.in/natefinch/lumberjack.v2"
 )
 
 var (
@@ -49,17 +48,7 @@ func init() {
 
 func main() {
 
-	// init logger
-	if Config.GetString("app.system.mode") == "prod" {
-		Logger.Out = &lumberjack.Logger{
-			Filename:   Config.GetString("app.system.LogFile"),
-			MaxSize:    500,
-			MaxBackups: 3,
-			MaxAge:     28,
-		}
-	} else {
-		Logger.Out = os.Stdout
-	}
+	Logger.Out = os.Stdout
 
 	// добавляем логирование в грейлог
 	hook := graylog.NewGraylogHook(

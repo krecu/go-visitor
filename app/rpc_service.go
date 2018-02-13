@@ -12,6 +12,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/keepalive"
 	"google.golang.org/grpc/reflection"
 )
 
@@ -24,8 +25,17 @@ type RpcService struct {
 func NewRpcService(app *App) (proto *RpcService, err error) {
 
 	proto = &RpcService{
-		app:    app,
-		server: grpc.NewServer(),
+		app: app,
+		server: grpc.NewServer(
+			grpc.MaxConcurrentStreams(100),
+			grpc.KeepaliveParams(keepalive.ServerParameters{
+				MaxConnectionIdle: 0,
+				//MaxConnectionAge:      100 * time.Millisecond,
+				//MaxConnectionAgeGrace: 100 * time.Millisecond,
+				Time:    1 * time.Minute,
+				Timeout: 1 * time.Second,
+			}),
+		),
 	}
 
 	api.RegisterGreeterServer(proto.server, proto)

@@ -25,7 +25,7 @@ func New(addrs []string) (proto *Client, err error) {
 	}
 
 	for _, h := range addrs {
-		if conn, err := grpc.Dial(h, grpc.WithInsecure()); err == nil {
+		if conn, err := grpc.Dial(h, grpc.WithInsecure(), grpc.WithTimeout(5*time.Millisecond)); err == nil {
 			proto.conn = append(proto.conn, conn)
 		}
 	}
@@ -77,6 +77,7 @@ func (v *Client) Post(id string, ip string, ua string, extra map[string]interfac
 	}
 
 	result, err = chanel.Post(context.Background(), &pb.PostRequest{Ip: ip, Ua: ua, Id: id, Extra: string(extraJson)})
+
 	if err != nil {
 		return
 	} else {
