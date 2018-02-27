@@ -14,6 +14,7 @@ import (
 	"github.com/avct/uasurfer"
 	"github.com/krecu/browscap_go"
 	"github.com/krecu/go-visitor/model"
+	"github.com/oschwald/geoip2-golang"
 )
 
 var VisitorErrorEmpty = fmt.Errorf("Visitor empty ")
@@ -70,6 +71,12 @@ func (v *VisitorService) Get(id string) (proto *model.Visitor, err error) {
 
 	proto = model.VisitorUnMarshal(record.Bins)
 
+	err = v.Indent(proto)
+
+	if err != nil {
+		return
+	}
+
 	// считаем время для дебага
 	proto.Debug.TimeTotal = time.Since(_total).String()
 
@@ -79,156 +86,25 @@ func (v *VisitorService) Get(id string) (proto *model.Visitor, err error) {
 // создание
 func (v *VisitorService) Post(id string, ip string, ua string, extra map[string]interface{}) (proto *model.Visitor, err error) {
 
-	// общий счетчик времени
-	_total := time.Now()
-
+	// первоначальная модель
 	proto = &model.Visitor{
 		Id:      id,
 		Created: time.Now().Unix(),
+		Updated: time.Now().Unix(),
+		Extra:   extra,
+		Ip: model.Ip{
+			V4: ip,
+		},
+		Personal: model.Personal{
+			Ua: ua,
+		},
 	}
 
-	// счетчик времени для определения гео
-	_geo := time.Now()
+	err = v.Indent(proto)
 
-	// считываем ГЕО данные по SyPex базе
-	if GeoData, ok := v.app.sypexgeo.GetCityFull(ip); ok == nil {
-
-		proto.Debug.GeoProvider = "sypexgeo"
-
-		if country, ok := GeoData["country"].(map[string]interface{}); ok {
-			proto.Country.Id = uint(pyraconv.ToInt64(country["id"]))
-			proto.Country.Name = pyraconv.ToString(country["name_en"])
-			proto.Country.NameRu = pyraconv.ToString(country["name_ru"])
-			proto.Country.Iso = pyraconv.ToString(country["iso"])
-			proto.Country.Iso3166_1_alpha_3 = model.ISO_3166_1_alpha_3Mapping(pyraconv.ToString(country["iso"]))
-			proto.Country.Mapping = model.CountryMapping(proto.Country.Iso)
-			proto.Location.TimeZone = pyraconv.ToString(country["timezone"])
-		}
-		if region, ok := GeoData["region"].(map[string]interface{}); ok {
-			proto.Region.Id = uint(pyraconv.ToInt64(region["id"]))
-			proto.Region.Name = pyraconv.ToString(region["name_en"])
-			proto.Region.NameRu = pyraconv.ToString(region["name_ru"])
-			proto.Region.Iso = pyraconv.ToString(region["iso"])
-			proto.Region.Mapping = model.RegionMapping(proto.Region.NameRu)
-		}
-		if city, ok := GeoData["city"].(map[string]interface{}); ok {
-			proto.City.Id = uint(pyraconv.ToInt64(city["id"]))
-			proto.City.Name = pyraconv.ToString(city["name_en"])
-			proto.City.NameRu = pyraconv.ToString(city["name_ru"])
-			proto.Location.Latitude = pyraconv.ToFloat32(city["lat"])
-			proto.Location.Longitude = pyraconv.ToFloat32(city["lon"])
-			proto.City.Mapping = model.CityMapping(proto.City.NameRu)
-		}
+	if err != nil {
+		return
 	}
-
-	// дополянем и перероверяем ГЕО по MaxMind
-	if GeoData, ok := v.app.maxmind.City(net.ParseIP(ip)); ok == nil {
-		if country := GeoData.Country; country.GeoNameID != 0 && proto.Country.Id == 0 {
-			proto.Debug.GeoProvider = "maxmind"
-			proto.Country.Id = uint(pyraconv.ToInt64(country.GeoNameID))
-			proto.Country.Name = pyraconv.ToString(country.Names["en"])
-			proto.Country.NameRu = pyraconv.ToString(country.Names["ru"])
-			proto.Country.Iso = pyraconv.ToString(country.IsoCode)
-			proto.Country.Mapping = model.CountryMapping(country.Names["ru"])
-		}
-		if city := GeoData.City; city.GeoNameID != 0 && proto.City.Id == 0 {
-			proto.City.Id = uint(pyraconv.ToInt64(city.GeoNameID))
-			proto.City.Name = pyraconv.ToString(city.Names["en"])
-			proto.City.NameRu = pyraconv.ToString(city.Names["ru"])
-			proto.City.Mapping = model.CityMapping(city.Names["ru"])
-		}
-		if location := GeoData.Location; location.TimeZone != "" && proto.Location.TimeZone == "" {
-			proto.Location.Latitude = pyraconv.ToFloat32(location.Latitude)
-			proto.Location.Longitude = pyraconv.ToFloat32(location.Longitude)
-			proto.Location.TimeZone = pyraconv.ToString(location.TimeZone)
-		}
-		if postal := GeoData.Postal; postal.Code != "" {
-			proto.Postal.Code = pyraconv.ToString(postal.Code)
-		}
-	}
-
-	// считаем время для дебага
-	proto.Debug.TimeGeo = time.Since(_geo).String()
-
-	// счетчик времени для определения устройств
-	_device := time.Now()
-
-	// считываем данные по устройству/браузеру/платформе
-	if DeviceData, ok := browscap_go.GetBrowser(ua); ok {
-
-		proto.Debug.DeviceProvider = "browscap"
-
-		proto.Device = model.Device{
-			Name:  DeviceData.DeviceName,
-			Brand: DeviceData.DeviceBrand,
-			Type:  DeviceData.DeviceType,
-		}
-
-		proto.Platform = model.Platform{
-			Name:    DeviceData.Platform,
-			Version: DeviceData.PlatformVersion,
-			Short:   DeviceData.PlatformShort,
-		}
-
-		proto.Browser = model.Browser{
-			Name:    DeviceData.Browser,
-			Version: DeviceData.BrowserVersion,
-			Type:    DeviceData.BrowserType,
-		}
-
-		// если в основной базе не найденно значений
-		if DeviceData.DeviceType == "unknown" || DeviceData.DeviceType == "" {
-
-			proto.Debug.DeviceProvider = "uasurfer"
-
-			// Дополнительный парсер, если вдруг основной сбойнул
-			// работает по мапингам:
-			// Mobile Phone, Mobile Device, Tablet, Desktop, TV Device, Console,
-			// FonePad, Ebook Reader, Car Entertainment System or unknown
-			if DeviceTmp := uasurfer.Parse(ua); DeviceData != nil {
-				switch DeviceTmp.DeviceType.String() {
-				case "DeviceTV":
-					proto.Device.Name = "Smart TV"
-					proto.Device.Type = "TV Device"
-					break
-				case "DevicePhone":
-					proto.Device.Name = "unknown"
-					proto.Device.Type = "Mobile Phone"
-					break
-				case "DeviceComputer":
-					proto.Device.Name = "unknown"
-					proto.Device.Type = "Desktop"
-					break
-				case "DeviceTablet":
-					proto.Device.Name = "unknown"
-					proto.Device.Type = "Tablet"
-					break
-				case "DeviceConsole":
-					proto.Device.Name = "unknown"
-					proto.Device.Type = "Console"
-					break
-				case "DeviceWearable":
-					proto.Device.Name = "unknown"
-					proto.Device.Type = "Mobile Device"
-					break
-				}
-
-			}
-		}
-
-		proto.Device.Mapping = model.DeviceMapping(proto.Device, proto.Platform)
-	}
-
-	// считаем время для дебага
-	proto.Debug.TimeDevice = time.Since(_device).String()
-
-	// по пользователю
-	proto.Personal.Ua = ua
-	proto.Ip.V4 = ip
-	proto.Extra = extra
-
-	// считаем время для дебага
-	proto.Debug.TimeTotal = time.Since(_total).String()
 
 	// сораняем в БД
 	v.Save(
@@ -246,9 +122,8 @@ func (v *VisitorService) Post(id string, ip string, ua string, extra map[string]
 // изменение
 func (v *VisitorService) Patch(id string, fields map[string]interface{}) (proto *model.Visitor, err error) {
 
-	//var mapProto map[string]interface{}
-
 	proto, err = v.Get(id)
+
 	if err != nil {
 		return
 	} else {
@@ -257,6 +132,8 @@ func (v *VisitorService) Patch(id string, fields map[string]interface{}) (proto 
 			return
 		}
 	}
+
+	proto.Updated = time.Now().Unix()
 
 	if _, ok := fields["extra"]; ok {
 		var buf []byte
@@ -276,30 +153,6 @@ func (v *VisitorService) Patch(id string, fields map[string]interface{}) (proto 
 			uint32(v.app.config.GetInt("app.aerospike.Ttl")),
 		)
 	}
-
-	return
-
-	//if bufProto, err := json.Marshal(proto); err == nil {
-	//	if err = json.Unmarshal(bufProto, &mapProto); err == nil {
-	//		if err = mergo.Merge(&fields, mapProto); err == nil {
-	//
-	//			pp.Println(fields)
-	//
-	//			if bufProto, err := json.Marshal(fields); err == nil {
-	//				if err = json.Unmarshal(bufProto, &proto); err == nil {
-	//					v.Save(
-	//						v.app.aerospike,
-	//						proto,
-	//						v.app.config.GetString("app.aerospike.NameSpace"),
-	//						v.app.config.GetString("app.aerospike.Set"),
-	//						v.app.config.GetDuration("app.aerospike.WriteTimeout")*time.Millisecond,
-	//						uint32(v.app.config.GetInt("app.aerospike.Ttl")),
-	//					)
-	//				}
-	//			}
-	//		}
-	//	}
-	//}
 
 	return
 }
@@ -333,7 +186,223 @@ func (v *VisitorService) Delete(id string) (err error) {
 	return
 }
 
-// удаление
+// определение информации о юзере
+// применяется в GET/POST/PATCH
+func (v *VisitorService) Indent(proto *model.Visitor) (err error) {
+
+	var (
+		DataGeo    *model.Geo
+		DataDevice *model.System
+		TimerTotal = time.Now()
+	)
+
+	// счетчик времени для определения гео
+	TimerGeo := time.Now()
+
+	// считываем ГЕО данные по SyPex базе
+	if DataGeo, err = v.GetGeo(proto.Ip.V4); err == nil {
+		proto.Country = DataGeo.Country
+		proto.Region = DataGeo.Region
+		proto.City = DataGeo.City
+		proto.Postal = DataGeo.Postal
+		proto.Location = DataGeo.Location
+	} else {
+		Logger.Errorf("Ошибка определения географии: IP:%s; ERR:%s", proto.Ip.V4, err)
+	}
+
+	// считаем время для дебага
+	proto.Debug.TimeGeo = time.Since(TimerGeo).String()
+
+	// счетчик времени для определения устройств
+	TimerDevice := time.Now()
+
+	// считываем ГЕО данные по SyPex базе
+	if DataDevice, err = v.GetSystem(proto.Personal.Ua); err == nil {
+		proto.Device = DataDevice.Device
+		proto.Browser = DataDevice.Browser
+		proto.Platform = DataDevice.Platform
+	} else {
+		Logger.Errorf("Ошибка определения устройства: UA:%s; ERR:%s", proto.Personal.Ua, err)
+	}
+
+	// считаем время для дебага
+	proto.Debug.TimeDevice = time.Since(TimerDevice).String()
+
+	// считаем время для дебага
+	proto.Debug.TimeTotal = time.Since(TimerTotal).String()
+
+	return
+}
+
+// определение географии
+func (v *VisitorService) GetGeo(ip string) (geo *model.Geo, err error) {
+
+	var (
+		cacheKey = fmt.Sprintf("geo_%s", ip)
+		vSypex   map[string]interface{}
+		vMaxMind *geoip2.City
+	)
+
+	geo = &model.Geo{}
+
+	if GeoCache, ok := v.app.cache.Get(cacheKey); GeoCache != nil && ok {
+		if value, ok := GeoCache.(*model.Geo); ok {
+			geo = value
+			return
+		}
+	}
+
+	// считываем ГЕО данные по SyPex базе
+	if vSypex, err = v.app.sypexgeo.GetCityFull(ip); err == nil {
+		if country, ok := vSypex["country"].(map[string]interface{}); ok {
+			geo.Country.Id = uint(pyraconv.ToInt64(country["id"]))
+			geo.Country.Name = pyraconv.ToString(country["name_en"])
+			geo.Country.NameRu = pyraconv.ToString(country["name_ru"])
+			geo.Country.Iso = pyraconv.ToString(country["iso"])
+			geo.Country.Iso3166_1_alpha_3 = model.ISO_3166_1_alpha_3Mapping(pyraconv.ToString(country["iso"]))
+			geo.Country.Mapping = model.CountryMapping(geo.Country.Iso)
+			geo.Location.TimeZone = pyraconv.ToString(country["timezone"])
+		}
+		if region, ok := vSypex["region"].(map[string]interface{}); ok {
+			geo.Region.Id = uint(pyraconv.ToInt64(region["id"]))
+			geo.Region.Name = pyraconv.ToString(region["name_en"])
+			geo.Region.NameRu = pyraconv.ToString(region["name_ru"])
+			geo.Region.Iso = pyraconv.ToString(region["iso"])
+			geo.Region.Mapping = model.RegionMapping(geo.Region.NameRu)
+		}
+		if city, ok := vSypex["city"].(map[string]interface{}); ok {
+			geo.City.Id = uint(pyraconv.ToInt64(city["id"]))
+			geo.City.Name = pyraconv.ToString(city["name_en"])
+			geo.City.NameRu = pyraconv.ToString(city["name_ru"])
+			geo.Location.Latitude = pyraconv.ToFloat32(city["lat"])
+			geo.Location.Longitude = pyraconv.ToFloat32(city["lon"])
+			geo.City.Mapping = model.CityMapping(geo.City.NameRu)
+		}
+	}
+
+	// дополянем и перероверяем ГЕО по MaxMind
+	if vMaxMind, err = v.app.maxmind.City(net.ParseIP(ip)); err == nil {
+
+		if country := vMaxMind.Country; country.GeoNameID != 0 && geo.Country.Id == 0 {
+			geo.Country.Id = uint(pyraconv.ToInt64(country.GeoNameID))
+			geo.Country.Name = pyraconv.ToString(country.Names["en"])
+			geo.Country.NameRu = pyraconv.ToString(country.Names["ru"])
+			geo.Country.Iso = pyraconv.ToString(country.IsoCode)
+			geo.Country.Mapping = model.CountryMapping(country.Names["ru"])
+		}
+		if city := vMaxMind.City; city.GeoNameID != 0 && geo.City.Id == 0 {
+			geo.City.Id = uint(pyraconv.ToInt64(city.GeoNameID))
+			geo.City.Name = pyraconv.ToString(city.Names["en"])
+			geo.City.NameRu = pyraconv.ToString(city.Names["ru"])
+			geo.City.Mapping = model.CityMapping(city.Names["ru"])
+		}
+		if location := vMaxMind.Location; location.TimeZone != "" && geo.Location.TimeZone == "" {
+			geo.Location.Latitude = pyraconv.ToFloat32(location.Latitude)
+			geo.Location.Longitude = pyraconv.ToFloat32(location.Longitude)
+			geo.Location.TimeZone = pyraconv.ToString(location.TimeZone)
+		}
+		if postal := vMaxMind.Postal; postal.Code != "" {
+			geo.Postal.Code = pyraconv.ToString(postal.Code)
+		}
+	}
+
+	if err == nil && geo != nil {
+		v.app.cache.SetDefault(cacheKey, geo)
+
+	}
+
+	return
+}
+
+// определение информации об устройстве
+func (v *VisitorService) GetSystem(ua string) (device *model.System, err error) {
+
+	var (
+		cacheKey = fmt.Sprintf("device_%s", ua)
+	)
+
+	device = &model.System{}
+
+	if GeoCache, ok := v.app.cache.Get(cacheKey); GeoCache != nil && ok {
+		if value, ok := GeoCache.(*model.System); ok {
+			device = value
+			return
+		}
+	}
+
+	// считываем данные по устройству/браузеру/платформе
+	if DeviceData, ok := browscap_go.GetBrowser(ua); ok {
+
+		device.Device = model.Device{
+			Name:  DeviceData.DeviceName,
+			Brand: DeviceData.DeviceBrand,
+			Type:  DeviceData.DeviceType,
+		}
+
+		device.Platform = model.Platform{
+			Name:    DeviceData.Platform,
+			Version: DeviceData.PlatformVersion,
+			Short:   DeviceData.PlatformShort,
+		}
+
+		device.Browser = model.Browser{
+			Name:    DeviceData.Browser,
+			Version: DeviceData.BrowserVersion,
+			Type:    DeviceData.BrowserType,
+		}
+
+		// если в основной базе не найденно значений
+		if DeviceData.DeviceType == "unknown" || DeviceData.DeviceType == "" {
+
+			// Дополнительный парсер, если вдруг основной сбойнул
+			// работает по мапингам:
+			// Mobile Phone, Mobile Device, Tablet, Desktop, TV Device, Console,
+			// FonePad, Ebook Reader, Car Entertainment System or unknown
+			if DeviceTmp := uasurfer.Parse(ua); DeviceData != nil {
+				switch DeviceTmp.DeviceType.String() {
+				case "DeviceTV":
+					device.Device.Name = "Smart TV"
+					device.Device.Type = "TV Device"
+					break
+				case "DevicePhone":
+					device.Device.Name = "unknown"
+					device.Device.Type = "Mobile Phone"
+					break
+				case "DeviceComputer":
+					device.Device.Name = "unknown"
+					device.Device.Type = "Desktop"
+					break
+				case "DeviceTablet":
+					device.Device.Name = "unknown"
+					device.Device.Type = "Tablet"
+					break
+				case "DeviceConsole":
+					device.Device.Name = "unknown"
+					device.Device.Type = "Console"
+					break
+				case "DeviceWearable":
+					device.Device.Name = "unknown"
+					device.Device.Type = "Mobile Device"
+					break
+				}
+
+			}
+		}
+
+		device.Device.Mapping = model.DeviceMapping(device.Device, device.Platform)
+	} else {
+		err = fmt.Errorf("Not found user agent: %s ", ua)
+	}
+
+	if err == nil && device != nil {
+		v.app.cache.SetDefault(cacheKey, device)
+
+	}
+
+	return
+}
+
+// сохранение
 func (v *VisitorService) Save(cache *aerospike.Client, proto *model.Visitor, ns string, set string, timeout time.Duration, ttl uint32) (err error) {
 
 	var (

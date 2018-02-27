@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/rand"
 	"os"
+	"runtime"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -47,6 +48,9 @@ func init() {
 }
 
 func main() {
+
+	n := runtime.NumCPU()
+	runtime.GOMAXPROCS(n)
 
 	Logger.Out = os.Stdout
 
