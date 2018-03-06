@@ -8,6 +8,8 @@ import (
 	"runtime"
 	"time"
 
+	"bufio"
+
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	"gopkg.in/gemnasium/logrus-graylog-hook.v2"
@@ -52,13 +54,19 @@ func main() {
 	n := runtime.NumCPU()
 	runtime.GOMAXPROCS(n)
 
-	Logger.Out = os.Stdout
+	Logger.Out = bufio.NewWriterSize(os.Stdout, 1024*16)
 
-	// добавляем логирование в грейлог
-	hook := graylog.NewGraylogHook(
-		Config.GetString("app.graylog.host")+":"+Config.GetString("app.graylog.port"),
-		map[string]interface{}{"facility": Config.GetString("app.system.instance")})
-	Logger.AddHook(hook)
+	if Config.GetString("app.system.mode") == "debug" {
+		// добавляем логирование в грейлог
+		hook := graylog.NewGraylogHook(
+			Config.GetString("app.graylog.host")+":"+Config.GetString("app.graylog.port"),
+			map[string]interface{}{"facility": Config.GetString("app.system.instance")})
+		wg := hook.Writer()
+		wg.CompressionType = graylog.NoCompress
+		wg.CompressionLevel = 0
+		hook.SetWriter(wg)
+		Logger.AddHook(hook)
+	}
 
 	// init logger level
 	Logger.Level = logrus.Level(Config.GetInt("app.system.DebugLevel"))
