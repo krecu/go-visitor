@@ -1,5 +1,5 @@
 package model
 
 type Postal struct {
-	Code string	`json:"code"`
+	Code string `json:"code"`
 }

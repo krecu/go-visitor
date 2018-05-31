@@ -4,11 +4,8 @@ import (
 	"flag"
 	"fmt"
 	"math/rand"
-	"os"
 	"runtime"
 	"time"
-
-	"bufio"
 
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
@@ -54,7 +51,7 @@ func main() {
 	n := runtime.NumCPU()
 	runtime.GOMAXPROCS(n)
 
-	Logger.Out = bufio.NewWriterSize(os.Stdout, 1024*16)
+	//Logger.Out = bufio.NewWriterSize(os.Stdout, 1024*16)
 
 	if Config.GetString("app.system.mode") == "debug" {
 		// добавляем логирование в грейлог

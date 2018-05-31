@@ -5,13 +5,14 @@ import (
 
 	"fmt"
 
-	"net"
-
 	"encoding/json"
+
+	"net"
 
 	"github.com/CossackPyra/pyraconv"
 	"github.com/aerospike/aerospike-client-go"
 	"github.com/avct/uasurfer"
+	"github.com/k0kubun/pp"
 	"github.com/krecu/browscap_go"
 	"github.com/krecu/go-visitor/model"
 	"github.com/oschwald/geoip2-golang"
@@ -36,40 +37,52 @@ func NewVisitorService(app *App) (proto *VisitorService, err error) {
 func (v *VisitorService) Get(id string) (proto *model.Visitor, err error) {
 
 	var (
-		record *aerospike.Record
-		key    *aerospike.Key
+		record   *aerospike.Record
+		key      *aerospike.Key
+		cacheKey = fmt.Sprintf("visitor_get_%s", id)
 	)
 
-	// общий счетчик времени
 	_total := time.Now()
 
-	if !v.app.aerospike.IsConnected() {
-		err = fmt.Errorf("Нет соединения с хранилищем ")
-		return
-	}
-
-	policy := aerospike.NewPolicy()
-	policy.Priority = aerospike.HIGH
-	policy.Timeout = v.app.config.GetDuration("app.aerospike.GetTimeout") * time.Millisecond
-
-	key, err = aerospike.NewKey(
-		v.app.config.GetString("app.aerospike.NameSpace"),
-		v.app.config.GetString("app.aerospike.Set"),
-		id,
-	)
-	if err != nil {
-		return
-	}
-
-	record, err = v.app.aerospike.Get(policy, key)
-	if record == nil || err != nil {
-		if err == nil {
-			err = VisitorErrorEmpty
+	if VisitorCache, ok := v.app.cache.Get(cacheKey); VisitorCache != nil && ok {
+		if value, ok := VisitorCache.(*model.Visitor); ok {
+			proto = value
+			pp.Fatal(proto)
 		}
-		return
-	}
+	} else {
 
-	proto = model.VisitorUnMarshal(record.Bins)
+		// общий счетчик времени
+
+		if !v.app.aerospike.IsConnected() {
+			err = fmt.Errorf("Нет соединения с хранилищем ")
+			return
+		}
+
+		policy := aerospike.NewPolicy()
+		policy.Priority = aerospike.HIGH
+		policy.Timeout = v.app.config.GetDuration("app.aerospike.GetTimeout") * time.Microsecond
+
+		key, err = aerospike.NewKey(
+			v.app.config.GetString("app.aerospike.NameSpace"),
+			v.app.config.GetString("app.aerospike.Set"),
+			id,
+		)
+		if err != nil {
+			return
+		}
+
+		record, err = v.app.aerospike.Get(policy, key)
+		if record == nil || err != nil {
+			if err == nil {
+				err = VisitorErrorEmpty
+			}
+			return
+		}
+
+		proto = model.VisitorUnMarshal(record.Bins)
+
+		v.app.cache.SetDefault(cacheKey, proto)
+	}
 
 	err = v.Indent(proto)
 
@@ -77,8 +90,7 @@ func (v *VisitorService) Get(id string) (proto *model.Visitor, err error) {
 		return
 	}
 
-	// считаем время для дебага
-	proto.Debug.TimeTotal = time.Since(_total).String()
+	proto.Debug.TimeTotal = time.Since(_total)
 
 	return
 }
@@ -107,7 +119,7 @@ func (v *VisitorService) Post(id string, ip string, ua string, extra map[string]
 	}
 
 	// сораняем в БД
-	v.Save(
+	go v.Save(
 		v.app.aerospike,
 		proto,
 		v.app.config.GetString("app.aerospike.NameSpace"),
@@ -144,7 +156,7 @@ func (v *VisitorService) Patch(id string, fields map[string]interface{}) (proto 
 	}
 
 	if err == nil {
-		v.Save(
+		go v.Save(
 			v.app.aerospike,
 			proto,
 			v.app.config.GetString("app.aerospike.NameSpace"),
@@ -193,7 +205,6 @@ func (v *VisitorService) Indent(proto *model.Visitor) (err error) {
 	var (
 		DataGeo    *model.Geo
 		DataDevice *model.System
-		TimerTotal = time.Now()
 	)
 
 	// счетчик времени для определения гео
@@ -211,7 +222,7 @@ func (v *VisitorService) Indent(proto *model.Visitor) (err error) {
 	}
 
 	// считаем время для дебага
-	proto.Debug.TimeGeo = time.Since(TimerGeo).String()
+	proto.Debug.TimeGeo = time.Since(TimerGeo)
 
 	// счетчик времени для определения устройств
 	TimerDevice := time.Now()
@@ -226,10 +237,7 @@ func (v *VisitorService) Indent(proto *model.Visitor) (err error) {
 	}
 
 	// считаем время для дебага
-	proto.Debug.TimeDevice = time.Since(TimerDevice).String()
-
-	// считаем время для дебага
-	proto.Debug.TimeTotal = time.Since(TimerTotal).String()
+	proto.Debug.TimeDevice = time.Since(TimerDevice)
 
 	return
 }
@@ -406,13 +414,16 @@ func (v *VisitorService) GetSystem(ua string) (device *model.System, err error) 
 func (v *VisitorService) Save(cache *aerospike.Client, proto *model.Visitor, ns string, set string, timeout time.Duration, ttl uint32) (err error) {
 
 	var (
-		key *aerospike.Key
+		key      *aerospike.Key
+		cacheKey = fmt.Sprintf("visitor_get_%s", proto.Id)
 	)
 
 	if !cache.IsConnected() {
 		err = fmt.Errorf("Нет соединения с хранилищем ")
 		return
 	}
+
+	v.app.cache.Delete(cacheKey)
 
 	// преобразуем структуру в массив
 	record := model.VisitorMarshal(proto)

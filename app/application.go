@@ -8,7 +8,6 @@ import (
 	"github.com/CossackPyra/pyraconv"
 	"github.com/aerospike/aerospike-client-go"
 	"github.com/krecu/browscap_go"
-	//sypexgeo "github.com/krecu/go-sypexgeo"
 	sypexgeo "github.com/night-codes/go-sypexgeo"
 	"github.com/oschwald/geoip2-golang"
 	cache "github.com/patrickmn/go-cache"

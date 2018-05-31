@@ -57,11 +57,13 @@ func (s *RpcService) Start() {
 // получение
 func (s *RpcService) Get(ctx context.Context, in *api.GetRequest) (*api.Reply, error) {
 
-	_total := time.Now()
+	var _total time.Duration
 
 	reply := &api.Reply{}
 
 	if values, err := s.app.visitor.Get(pyraconv.ToString(in.Id)); err == nil {
+
+		_total = values.Debug.TimeTotal
 
 		if values == nil {
 			reply.Status = "0001"
@@ -80,9 +82,10 @@ func (s *RpcService) Get(ctx context.Context, in *api.GetRequest) (*api.Reply, e
 	}
 
 	Logger.WithFields(logrus.Fields{
+		"state":    reply.Status,
 		"op":       "Get",
-		"duration": time.Since(_total).Seconds(),
-	}).Debugf("Get: %f", time.Since(_total).Seconds())
+		"duration": _total.Seconds() * 1000,
+	}).Debugf("GET")
 
 	return reply, nil
 }
@@ -90,9 +93,8 @@ func (s *RpcService) Get(ctx context.Context, in *api.GetRequest) (*api.Reply, e
 // создание
 func (s *RpcService) Post(ctx context.Context, in *api.PostRequest) (*api.Reply, error) {
 
-	_total := time.Now()
-
 	var extra map[string]interface{}
+	var _total time.Duration
 
 	reply := &api.Reply{}
 
@@ -104,6 +106,9 @@ func (s *RpcService) Post(ctx context.Context, in *api.PostRequest) (*api.Reply,
 	json.Unmarshal([]byte(in.Extra), &extra)
 
 	if values, err := s.app.visitor.Post(in.Id, in.Ip, in.Ua, extra); err == nil {
+
+		_total = values.Debug.TimeTotal
+
 		if buf, err := json.Marshal(values); err == nil {
 			reply.Body = string(buf)
 		} else {
@@ -120,9 +125,10 @@ func (s *RpcService) Post(ctx context.Context, in *api.PostRequest) (*api.Reply,
 	}
 
 	Logger.WithFields(logrus.Fields{
-		"op":       "Indent",
-		"duration": time.Since(_total).Seconds(),
-	}).Debugf("Indent: %f", time.Since(_total).Seconds())
+		"state":    reply.Status,
+		"op":       "Post",
+		"duration": _total.Seconds() * 1000,
+	}).Debugf("POST")
 
 	return reply, nil
 }
@@ -130,7 +136,7 @@ func (s *RpcService) Post(ctx context.Context, in *api.PostRequest) (*api.Reply,
 // изменение
 func (s *RpcService) Patch(ctx context.Context, in *api.PatchRequest) (*api.Reply, error) {
 
-	_total := time.Now()
+	//_total := time.Now()
 
 	var fields map[string]interface{}
 
@@ -159,10 +165,10 @@ func (s *RpcService) Patch(ctx context.Context, in *api.PatchRequest) (*api.Repl
 		}
 	}
 
-	Logger.WithFields(logrus.Fields{
-		"op":       "Patch",
-		"duration": time.Since(_total).Seconds(),
-	}).Debugf("Patch: %f", time.Since(_total).Seconds())
+	//Logger.WithFields(logrus.Fields{
+	//	"op":       "Patch",
+	//	"duration": time.Since(_total).Seconds(),
+	//}).Debugf("Patch: %f", time.Since(_total).Seconds())
 
 	return reply, nil
 }
