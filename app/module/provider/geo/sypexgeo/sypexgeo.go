@@ -16,17 +16,17 @@ type SypexGeo struct {
 }
 
 type Option struct {
-	db string
+	Db string
 }
 
 func New(opt Option) (proto *SypexGeo, err error) {
 
 	proto = &SypexGeo{
-		conn: sypexgeo.New(opt.db),
+		conn: sypexgeo.New(opt.Db),
 	}
 
 	if proto.conn.Version == 0 {
-		err = fmt.Errorf("Error load DB: %s", opt.db)
+		err = fmt.Errorf("Error load DB: %s", opt.Db)
 	}
 
 	proto.gn, err = geo.LoadCountry()

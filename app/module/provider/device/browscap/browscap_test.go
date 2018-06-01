@@ -8,7 +8,7 @@ import (
 
 func TestBrowsCap_Get(t *testing.T) {
 	bc, err := New(Option{
-		db: "./full_php_browscap.ini",
+		Db: "./full_php_browscap.ini",
 	})
 
 	if err != nil {
@@ -40,7 +40,7 @@ func TestBrowsCap_Get(t *testing.T) {
 
 func BenchmarkBrowsCap_Get(b *testing.B) {
 	bc, err := New(Option{
-		db: "./full_php_browscap.ini",
+		Db: "./full_php_browscap.ini",
 	})
 
 	if err != nil {

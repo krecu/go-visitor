@@ -4,3 +4,7 @@ databases/*
 build/*
 .idea
 .DS_Store
+db
+*.txt
+*.ini
+*.dat

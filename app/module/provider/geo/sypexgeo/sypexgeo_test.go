@@ -10,7 +10,7 @@ import (
 
 func TestSypex_Get(t *testing.T) {
 	spx, err := New(Option{
-		db: "./SxGeoMax.dat",
+		Db: "./SxGeoMax.dat",
 	})
 
 	if err != nil {
@@ -28,7 +28,7 @@ func TestSypex_Get(t *testing.T) {
 
 func BenchmarkSypex_Get(b *testing.B) {
 	spx, err := New(Option{
-		db: "./SxGeoMax.dat",
+		Db: "./SxGeoMax.dat",
 	})
 
 	if err != nil {

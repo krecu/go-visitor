@@ -12,7 +12,7 @@ type BrowsCap struct {
 }
 
 type Option struct {
-	db string
+	Db string
 }
 
 func New(opt Option) (proto *BrowsCap, err error) {
@@ -21,7 +21,7 @@ func New(opt Option) (proto *BrowsCap, err error) {
 		opt: opt,
 	}
 	err = browscap_go.InitBrowsCap(
-		opt.db,
+		opt.Db,
 		true,
 		time.Duration(3600)*time.Second,
 		time.Duration(3600)*time.Second,
