@@ -12,16 +12,20 @@ import (
 
 type SypexGeo struct {
 	conn sypexgeo.SxGEO
+	opt  Option
 	gn   []geo.CountryGeoNames
 }
 
 type Option struct {
-	Db string
+	Db     string
+	Weight int
+	Name   string
 }
 
 func New(opt Option) (proto *SypexGeo, err error) {
 
 	proto = &SypexGeo{
+		opt:  opt,
 		conn: sypexgeo.New(opt.Db),
 	}
 
@@ -32,6 +36,14 @@ func New(opt Option) (proto *SypexGeo, err error) {
 	proto.gn, err = geo.LoadCountry()
 
 	return
+}
+
+func (spx *SypexGeo) Weight() int {
+	return spx.opt.Weight
+}
+
+func (spx *SypexGeo) Name() string {
+	return spx.opt.Name
 }
 
 func (spx *SypexGeo) Get(ip string) (proto *geo.Model, err error) {

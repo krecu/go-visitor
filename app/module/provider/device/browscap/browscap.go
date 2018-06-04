@@ -1,6 +1,7 @@
 package browscap
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/krecu/browscap_go"
@@ -12,7 +13,9 @@ type BrowsCap struct {
 }
 
 type Option struct {
-	Db string
+	Db     string
+	Weight int
+	Name   string
 }
 
 func New(opt Option) (proto *BrowsCap, err error) {
@@ -28,6 +31,14 @@ func New(opt Option) (proto *BrowsCap, err error) {
 	)
 
 	return
+}
+
+func (bc *BrowsCap) Weight() int {
+	return bc.opt.Weight
+}
+
+func (bc *BrowsCap) Name() string {
+	return bc.opt.Name
 }
 
 func (bc *BrowsCap) Get(ua string) (proto *device.Model, err error) {
@@ -65,6 +76,10 @@ func (bc *BrowsCap) Get(ua string) (proto *device.Model, err error) {
 				Short:   browser.PlatformShort,
 				Version: browser.PlatformVersion,
 			},
+		}
+
+		if proto.Device.Type == "unknown" {
+			err = fmt.Errorf("Bad device type")
 		}
 	}
 

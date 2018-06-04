@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/Pallinder/go-randomdata"
+	"github.com/k0kubun/pp"
 )
 
 func TestWrapper_Parse(t *testing.T) {
@@ -17,12 +18,18 @@ func TestWrapper_Parse(t *testing.T) {
 		t.Errorf("%s", err)
 	}
 
-	ua, ip := GetUaIp()
+	//ua, ip := GetUaIp()
+	ua, ip := "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_4) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/62.0.3202.89 Safari/537.36", "79.104.42.249"
+	//ua, ip := "AppleCoreMedia/1.0.0.12B466 (Apple TV; U; CPU OS 8_1_3 like Mac OS X; en_us)", "79.104.42.249"
 	t.Logf("%s, %s", ip, ua)
 
-	_, err = wr.Parse(ip, ua)
+	info, err := wr.Parse(ip, ua)
 	if err != nil {
 		t.Errorf("%s, %s: %s", ip, ua, err)
+	} else {
+		pp.Println(info)
+		pp.Println(info.Debug.TimeGeo.Seconds())
+		pp.Println(info.Debug.TimeDevice.Seconds())
 	}
 }
 

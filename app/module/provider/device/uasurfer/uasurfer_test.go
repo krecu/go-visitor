@@ -1,13 +1,11 @@
-package uap
+package uasurfer
 
 import (
 	"testing"
 )
 
-func TestUap_Get(t *testing.T) {
-	uap, err := New(Option{
-		Db: "./regexes.yaml",
-	})
+func TestUaSurfer_Get(t *testing.T) {
+	uas, err := New(Option{})
 
 	if err != nil {
 		t.Error(err)
@@ -31,20 +29,18 @@ func TestUap_Get(t *testing.T) {
 	}
 
 	for _, s := range list {
-		uap.Get(s)
+		uas.Get(s)
 	}
 }
 
 func BenchmarkUap_Get(b *testing.B) {
-	uap, err := New(Option{
-		Db: "./regexes.yaml",
-	})
+	uas, err := New(Option{})
 
 	if err != nil {
 		b.Error(err)
 	}
 
 	for i := 0; i < b.N; i++ {
-		uap.Get("Mozilla/5.0 (iPhone; CPU iPhone OS 11_2_6 like Mac OS X) AppleWebKit/604.5.6 (KHTML, like Gecko) Mobile/15D100 Instagram 28.0.0.12.285 (iPhone9,3; iOS 11_2_6; ru_RU; ru-RU; scale=2.00; gamut=wide; 750x1334)")
+		uas.Get("Mozilla/5.0 (iPhone; CPU iPhone OS 11_2_6 like Mac OS X) AppleWebKit/604.5.6 (KHTML, like Gecko) Mobile/15D100 Instagram 28.0.0.12.285 (iPhone9,3; iOS 11_2_6; ru_RU; ru-RU; scale=2.00; gamut=wide; 750x1334)")
 	}
 }

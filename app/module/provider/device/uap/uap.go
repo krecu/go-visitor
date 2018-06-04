@@ -7,17 +7,25 @@ import (
 
 type Uap struct {
 	conn *uaparser.Parser
+	opt  Option
 }
 
 type Option struct {
-	db string
+	Db     string
+	Weight int
 }
 
 func New(opt Option) (proto *Uap, err error) {
 
-	proto = &Uap{}
-	proto.conn, err = uaparser.New(opt.db)
+	proto = &Uap{
+		opt: opt,
+	}
+	proto.conn, err = uaparser.New(opt.Db)
 	return
+}
+
+func (uap *Uap) Weight() int {
+	return uap.opt.Weight
 }
 
 func (uap *Uap) Get(ua string) (proto *device.Model, err error) {

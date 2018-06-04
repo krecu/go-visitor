@@ -10,7 +10,7 @@ import (
 
 func TestMaxMind_Get(t *testing.T) {
 	mm, err := New(Option{
-		db: "/Users/kretsu/Work/Go/src/github.com/krecu/go-visitor/databases/GeoLite2-City.mmdb",
+		Db: "/Users/kretsu/Work/Go/src/github.com/krecu/go-visitor/databases/GeoLite2-City.mmdb",
 	})
 
 	if err != nil {
@@ -28,7 +28,7 @@ func TestMaxMind_Get(t *testing.T) {
 
 func BenchmarkMaxMind_Get(b *testing.B) {
 	mm, err := New(Option{
-		db: "/Users/kretsu/Work/Go/src/github.com/krecu/go-visitor/databases/GeoLite2-City.mmdb",
+		Db: "/Users/kretsu/Work/Go/src/github.com/krecu/go-visitor/databases/GeoLite2-City.mmdb",
 	})
 
 	if err != nil {

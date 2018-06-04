@@ -12,23 +12,36 @@ import (
 
 type MaxMind struct {
 	conn *geoip2.Reader
+	opt  Option
 	gn   []geo.CountryGeoNames
 }
 
 type Option struct {
-	db string
+	Db     string
+	Weight int
+	Name   string
 }
 
 func New(opt Option) (proto *MaxMind, err error) {
 
-	proto = &MaxMind{}
-	proto.conn, err = geoip2.Open(opt.db)
+	proto = &MaxMind{
+		opt: opt,
+	}
+	proto.conn, err = geoip2.Open(opt.Db)
 	if err != nil {
 		return
 	}
 	proto.gn, err = geo.LoadCountry()
 
 	return
+}
+
+func (mm *MaxMind) Weight() int {
+	return mm.opt.Weight
+}
+
+func (mm *MaxMind) Name() string {
+	return mm.opt.Name
 }
 
 func (mm *MaxMind) Get(ip string) (proto *geo.Model, err error) {
