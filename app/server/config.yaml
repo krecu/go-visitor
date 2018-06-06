@@ -1,0 +1,14 @@
+app:
+  system:
+      Mode: "debug"
+      Instance: "visitor"
+      DebugLevel: 8
+  graylog:
+      Host: "192.168.0.48"
+      Port: 12201
+  server:
+      listen: ":8094"
+      MaxConcurrentStreams: 1000
+      Timeout: 1
+      Time: 1
+      MaxConnectionIdle: 0

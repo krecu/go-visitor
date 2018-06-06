@@ -1,0 +1,46 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "io.grpc.visitor";
+option java_outer_classname = "VisitorProto";
+
+package rpc;
+
+// The greeting service definition.
+service Greeter {
+  // Sends a greeting
+  rpc Get (GetRequest) returns (Reply) {}
+  rpc Delete (DeleteRequest) returns (Reply) {}
+  rpc Post (PostRequest) returns (Reply) {}
+  rpc Patch (PatchRequest) returns (Reply) {}
+}
+
+// The request message containing the user's name.
+message GetRequest {
+  string id = 1;
+}
+
+// The request message containing the user's name.
+message DeleteRequest {
+  string id = 1;
+}
+
+// The request message containing the user's name.
+message PostRequest {
+  string ip = 1;
+  string ua = 2;
+  string id = 3;
+  string extra = 4;
+}
+
+// The request message containing the user's name.
+message PatchRequest {
+  string id = 3;
+  string fields = 4;
+}
+
+// The response message containing the greetings
+message Reply {
+  string status = 1;
+  string body = 2;
+}
