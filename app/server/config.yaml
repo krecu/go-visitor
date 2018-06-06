@@ -12,3 +12,13 @@ app:
       Timeout: 1
       Time: 1
       MaxConnectionIdle: 0
+  aerospike:
+      Hosts:
+        - 127.0.0.1:3000
+        - 127.0.0.1:3000
+      ConnectionTimeout: 1000
+      GetTimeout: 1000
+      WriteTimeout: 1000
+      Expiration: 3600
+      Set: "users"
+      NameSpace: "test"

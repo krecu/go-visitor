@@ -2,14 +2,11 @@ package main
 
 import (
 	"math/rand"
-	"net"
 	"runtime"
 
 	"time"
 
-	"bufio"
 	"fmt"
-	"os"
 
 	"flag"
 
@@ -17,15 +14,10 @@ import (
 	"github.com/krecu/go-visitor/app/module/provider/device/uasurfer"
 	"github.com/krecu/go-visitor/app/module/provider/geo/maxmind"
 	"github.com/krecu/go-visitor/app/module/provider/geo/sypexgeo"
-	"github.com/krecu/go-visitor/app/server/grpc/controller"
-
-	api "github.com/krecu/go-visitor/app/server/grpc/protoc/visitor"
+	"github.com/krecu/go-visitor/app/server/grpc"
 
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/keepalive"
-	"google.golang.org/grpc/reflection"
 	"gopkg.in/gemnasium/logrus-graylog-hook.v2"
 )
 
@@ -67,7 +59,7 @@ func main() {
 	n := runtime.NumCPU()
 	runtime.GOMAXPROCS(n)
 
-	Logger.Out = bufio.NewWriterSize(os.Stdout, 1024*16)
+	//Logger.Out = bufio.NewWriterSize(os.Stdout, 1024*16)
 	Logger.Infof("Конфиг: %s", Config.ConfigFileUsed())
 	Logger.Level = logrus.Level(Config.GetInt("app.system.DebugLevel"))
 
@@ -83,72 +75,61 @@ func main() {
 	hook.SetWriter(wg)
 	Logger.AddHook(hook)
 
-	GRPCServer := grpc.NewServer(
-		grpc.MaxConcurrentStreams(uint32(Config.GetInt("app.server.MaxConcurrentStreams"))),
-		grpc.KeepaliveParams(keepalive.ServerParameters{
-			MaxConnectionIdle: Config.GetDuration("app.server.MaxConnectionIdle") * time.Second,
-			Time:              Config.GetDuration("app.server.Time") * time.Second,
-			Timeout:           Config.GetDuration("app.server.Timeout") * time.Second,
-		}),
-	)
+	RpcServer, err := grpc.New(grpc.Options{
+		Listen:               Config.GetString("app.server.listen"),
+		Timeout:              Config.GetDuration("app.server.Timeout"),
+		Time:                 Config.GetDuration("app.server.Time"),
+		MaxConnectionIdle:    Config.GetDuration("app.server.MaxConnectionIdle"),
+		MaxConcurrentStreams: uint32(Config.GetInt("app.server.MaxConcurrentStreams")),
+		Db: struct {
+			Hosts             []string
+			ConnectionTimeout time.Duration
+			GetTimeout        time.Duration
+			WriteTimeout      time.Duration
+			Expiration        uint32
+			Set               string
+			NameSpace         string
+		}{
+			Hosts:             Config.GetStringSlice("app.aerospike.Hosts"),
+			ConnectionTimeout: Config.GetDuration("app.aerospike.ConnectionTimeout"),
+			GetTimeout:        Config.GetDuration("app.aerospike.GetTimeout"),
+			WriteTimeout:      Config.GetDuration("app.aerospike.WriteTimeout"),
+			Expiration:        uint32(Config.GetInt("app.aerospike.Expiration")),
+			Set:               Config.GetString("app.aerospike.Set"),
+			NameSpace:         Config.GetString("app.aerospike.NameSpace"),
+		},
+		Visitor: struct {
+			SypexGeo sypexgeo.Option
+			MaxMind  maxmind.Option
+			BrowsCap browscap.Option
+			UaSurfer uasurfer.Option
+		}{
+			SypexGeo: sypexgeo.Option{
+				Db:     "/Users/kretsu/Work/Go/src/github.com/krecu/go-visitor/app/db/SxGeoMax.dat",
+				Weight: 2,
+				Name:   "sypexgeo",
+			},
+			MaxMind: maxmind.Option{
+				Db:     "/Users/kretsu/Work/Go/src/github.com/krecu/go-visitor/app/db/GeoLite2-City.mmdb",
+				Weight: 1,
+				Name:   "maxmind",
+			},
+			BrowsCap: browscap.Option{
+				Db:     "/Users/kretsu/Work/Go/src/github.com/krecu/go-visitor/app/db/full_php_browscap.ini",
+				Weight: 2,
+				Name:   "browscap",
+			},
+			UaSurfer: uasurfer.Option{
+				Weight: 1,
+				Name:   "uasurfer",
+			},
+		},
+	})
 
-	GRPCController, err := controller.New()
 	if err != nil {
 		Logger.Fatalf("GRPC: %s", err)
 	}
 
-	api.RegisterGreeterServer(GRPCServer, GRPCController)
-	reflection.Register(GRPCServer)
-
-	// формируем список провайдеров и добавляем в визитор
-
-	// Основная GEO база для RU трафика
-	if sp, err := sypexgeo.New(sypexgeo.Option{
-		Db:     "/Users/kretsu/Work/Go/src/github.com/krecu/go-visitor/app/db/SxGeoMax.dat",
-		Weight: 2,
-		Name:   "sypexgeo",
-	}); err == nil {
-		GRPCController.SetGeoProvider(sp)
-	} else {
-		Logger.Fatalf("SYPEXGEO: %s", err)
-	}
-
-	// Основная ГЕО база для не RU трафика
-	if mm, err := maxmind.New(maxmind.Option{
-		Db:     "/Users/kretsu/Work/Go/src/github.com/krecu/go-visitor/app/db/GeoLite2-City.mmdb",
-		Weight: 1,
-		Name:   "maxmind",
-	}); err == nil {
-		GRPCController.SetGeoProvider(mm)
-	} else {
-		Logger.Fatalf("MAXMIND: %s", err)
-	}
-
-	// Основная база User-Agent
-	if br, err := browscap.New(browscap.Option{
-		Db:     "/Users/kretsu/Work/Go/src/github.com/krecu/go-visitor/app/db/full_php_browscap.ini",
-		Weight: 2,
-		Name:   "browscap",
-	}); err == nil {
-		GRPCController.SetDeviceProvider(br)
-	} else {
-		Logger.Fatalf("BROWSCAP: %s", err)
-	}
-
-	// Словарное определение User-Agent
-	if ua, err := uasurfer.New(uasurfer.Option{
-		Weight: 1,
-		Name:   "uasurfer",
-	}); err == nil {
-		GRPCController.SetDeviceProvider(ua)
-	} else {
-		Logger.Fatalf("UASURFER: %s", err)
-	}
-
-	if listen, err := net.Listen("tcp", Config.GetString("app.server.listen")); err == nil {
-		Logger.Fatalf("GRPC: %s", GRPCServer.Serve(listen))
-	} else {
-		Logger.Fatalf("GRPC: %s", err)
-	}
+	Logger.Fatal(RpcServer.Start())
 
 }

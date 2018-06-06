@@ -1,23 +1,53 @@
-package go_cache
+package aerospike
 
 import (
-	"bytes"
-	"encoding/json"
-	"fmt"
-	"go-stats/app/module/cache"
+	"strings"
+
 	"time"
 
-	vendor "github.com/patrickmn/go-cache"
+	"fmt"
+
+	"reflect"
+
+	"github.com/CossackPyra/pyraconv"
+	"github.com/aerospike/aerospike-client-go"
 )
 
-type Cache struct {
-	conn *vendor.Cache
+type Option struct {
+	Hosts             []string
+	ConnectionTimeout time.Duration
+	GetTimeout        time.Duration
+	WriteTimeout      time.Duration
+	Expiration        uint32
+	Set               string
+	NameSpace         string
 }
 
-func New(expireTtl int64) (proto *Cache, err error) {
+type Cache struct {
+	opt  Option
+	conn *aerospike.Client
+}
 
-	proto = &Cache{}
-	proto.conn = vendor.New(time.Duration(expireTtl)*time.Second, time.Duration(expireTtl*2)*time.Second)
+func New(opt Option) (proto *Cache, err error) {
+
+	proto = &Cache{
+		opt: opt,
+	}
+
+	hosts := []*aerospike.Host{}
+
+	for _, h := range opt.Hosts {
+		arg := strings.Split(h, ":")
+		hosts = append(hosts, &aerospike.Host{
+			Name: pyraconv.ToString(arg[0]),
+			Port: int(pyraconv.ToInt64(arg[1])),
+		})
+	}
+
+	policy := aerospike.NewClientPolicy()
+	policy.Timeout = opt.ConnectionTimeout * time.Millisecond
+
+	proto.conn, err = aerospike.NewClientWithPolicyAndHost(policy, hosts...)
 
 	return
 }
@@ -25,10 +55,27 @@ func New(expireTtl int64) (proto *Cache, err error) {
 // добавляем в кеш
 func (c *Cache) Set(key string, value interface{}) (err error) {
 
-	if buf, err := cache.Marshal(value); err == nil {
-		c.conn.Set(key, buf, vendor.NoExpiration)
+	var (
+		cacheKey *aerospike.Key
+	)
+
+	policy := aerospike.NewWritePolicy(0, c.opt.Expiration)
+	policy.Priority = aerospike.HIGH
+	policy.Timeout = c.opt.WriteTimeout * time.Millisecond
+
+	cacheKey, err = aerospike.NewKey(
+		c.opt.NameSpace,
+		c.opt.Set,
+		key,
+	)
+	if err != nil {
+		return
+	}
+
+	if record, ok := value.(map[string]interface{}); ok {
+		err = c.conn.Put(policy, cacheKey, record)
 	} else {
-		err = fmt.Errorf("Cache: %s", cache.NOT_FOUND)
+		err = fmt.Errorf("Неверный формат")
 	}
 
 	return
@@ -36,13 +83,6 @@ func (c *Cache) Set(key string, value interface{}) (err error) {
 
 // добавляем в кеш
 func (c *Cache) SetExpired(key string, value interface{}) (err error) {
-
-	if buf, err := cache.Marshal(value); err == nil {
-		c.conn.SetDefault(key, buf)
-	} else {
-		err = fmt.Errorf("Cache: %s", cache.NOT_FOUND)
-	}
-
 	return
 }
 
@@ -50,19 +90,28 @@ func (c *Cache) SetExpired(key string, value interface{}) (err error) {
 func (c *Cache) Get(key string, value interface{}) (err error) {
 
 	var (
-		jsonData []byte
+		cacheKey *aerospike.Key
 	)
 
-	if buf, ok := c.conn.Get(key); ok {
-		if jsonData, err = cache.Unmarshal(buf.([]byte)); err != nil {
-			err = fmt.Errorf("Cache: %s, %s", cache.ERROR_UNPACK, err)
-		} else {
-			if err = json.Unmarshal(jsonData, &value); err != nil {
-				err = fmt.Errorf("Cache: %s, %s", cache.ERROR_JSON, err)
-			}
+	policy := aerospike.NewPolicy()
+	policy.Priority = aerospike.HIGH
+	policy.Timeout = c.opt.GetTimeout * time.Millisecond
+
+	cacheKey, err = aerospike.NewKey(
+		c.opt.NameSpace,
+		c.opt.Set,
+		key,
+	)
+	if err != nil {
+		return
+	}
+
+	rv := reflect.ValueOf(value).Elem()
+	info, err := c.conn.Get(policy, cacheKey)
+	if err == nil {
+		for k, v := range info.Bins {
+			rv.SetMapIndex(reflect.ValueOf(k), reflect.ValueOf(v))
 		}
-	} else {
-		err = fmt.Errorf("Cache: %s", cache.NOT_FOUND)
 	}
 
 	return
@@ -70,35 +119,11 @@ func (c *Cache) Get(key string, value interface{}) (err error) {
 
 func (c *Cache) List(prefix string) (items []interface{}, err error) {
 
-	var (
-		buf       map[string]vendor.Item
-		key       []byte
-		prefixBuf = []byte(prefix)
-	)
-
-	buf = c.conn.Items()
-
-	if len(buf) == 0 {
-		err = cache.NOT_FOUND
-	} else {
-		for k, val := range buf {
-			key = []byte(k)
-			if !bytes.HasPrefix(key, prefixBuf) {
-				continue
-			}
-
-			items = append(items, val.Object)
-		}
-
-	}
-
 	return
 }
 
 func (c *Cache) Del(key string) {
-	c.conn.Delete(key)
 }
 
 func (c *Cache) Close() {
-	c.conn.Flush()
 }

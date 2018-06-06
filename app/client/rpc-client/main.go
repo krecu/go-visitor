@@ -7,6 +7,7 @@ import (
 
 	"fmt"
 
+	"github.com/k0kubun/pp"
 	"github.com/krecu/go-visitor/model"
 	pb "github.com/krecu/go-visitor/protoc/visitor"
 	"golang.org/x/net/context"
@@ -54,6 +55,8 @@ func (v *Client) Get(id string) (proto *model.Raw, err error) {
 
 	if result, err := chanel.Get(context.Background(), &pb.GetRequest{Id: id}); err == nil {
 		err = json.Unmarshal([]byte(result.GetBody()), &proto)
+	} else {
+		pp.Println(result)
 	}
 
 	return

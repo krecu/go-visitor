@@ -13,9 +13,8 @@ type Debug struct {
 }
 
 type City struct {
-	Name    string `json:"name"`
-	Id      string `json:"geoname_id"`
-	Mapping string `json:"mapping_id"`
+	Name string `json:"name"`
+	Id   string `json:"geoname_id"`
 }
 
 type Country struct {
@@ -23,7 +22,6 @@ type Country struct {
 	Id                string `json:"geoname_id"`
 	Iso               string `json:"iso_code"`
 	Iso3166_1_alpha_3 string `json:"iso_code_3166_1_alpha_3"`
-	Mapping           string `json:"mapping_id"`
 }
 
 type Location struct {
@@ -37,10 +35,9 @@ type Postal struct {
 }
 
 type Region struct {
-	Name    string `json:"name"`
-	Id      string `json:"geoname_id"`
-	Iso     string `json:"iso"`
-	Mapping string `json:"mapping_id"`
+	Name string `json:"name"`
+	Id   string `json:"geoname_id"`
+	Iso  string `json:"iso"`
 }
 
 type Geo struct {
@@ -55,14 +52,12 @@ type Browser struct {
 	Name    string `json:"name"`
 	Type    string `json:"type"`
 	Version string `json:"version"`
-	Mapping string `json:"mapping_id"`
 }
 
 type Device struct {
-	Name    string `json:"name"`
-	Type    string `json:"type"`
-	Brand   string `json:"brand"`
-	Mapping string `json:"mapping_id"`
+	Name  string `json:"name"`
+	Type  string `json:"type"`
+	Brand string `json:"brand"`
 }
 
 type Ip struct {
@@ -83,7 +78,6 @@ type Platform struct {
 	Name    string `json:"name"`
 	Short   string `json:"short"`
 	Version string `json:"version"`
-	Mapping int    `json:"mapping_id"`
 }
 
 type System struct {
