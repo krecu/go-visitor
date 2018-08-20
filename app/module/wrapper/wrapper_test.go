@@ -10,26 +10,22 @@ import (
 	"github.com/Pallinder/go-randomdata"
 	"github.com/k0kubun/pp"
 
-	providerDevice "github.com/krecu/go-visitor/app/module/provider/device"
 	"github.com/krecu/go-visitor/app/module/provider/device/browscap"
 	"github.com/krecu/go-visitor/app/module/provider/device/uasurfer"
-	providerGeo "github.com/krecu/go-visitor/app/module/provider/geo"
 	"github.com/krecu/go-visitor/app/module/provider/geo/maxmind"
 	"github.com/krecu/go-visitor/app/module/provider/geo/sypexgeo"
 )
 
 func TestWrapper_Parse(t *testing.T) {
-	var (
-		geo    []providerGeo.Geo
-		device []providerDevice.Device
-	)
+
+	wr := New()
 
 	if sp, err := sypexgeo.New(sypexgeo.Option{
 		Db:     "/Users/kretsu/Work/Go/src/github.com/krecu/go-visitor/app/db/SxGeoMax.dat",
 		Weight: 2,
 		Name:   "sypexgeo",
 	}); err == nil {
-		geo = append(geo, sp)
+		wr.AddGeoProvider(sp)
 	}
 
 	if mm, err := maxmind.New(maxmind.Option{
@@ -37,7 +33,7 @@ func TestWrapper_Parse(t *testing.T) {
 		Weight: 1,
 		Name:   "maxmind",
 	}); err == nil {
-		geo = append(geo, mm)
+		wr.AddGeoProvider(mm)
 	}
 
 	if br, err := browscap.New(browscap.Option{
@@ -45,24 +41,19 @@ func TestWrapper_Parse(t *testing.T) {
 		Weight: 2,
 		Name:   "browscap",
 	}); err == nil {
-		device = append(device, br)
+		wr.AddDeviceProvider(br)
 	}
 
 	if ua, err := uasurfer.New(uasurfer.Option{
 		Weight: 1,
 		Name:   "uasurfer",
 	}); err == nil {
-		device = append(device, ua)
-	}
-
-	wr, err := New(geo, device)
-	if err != nil {
-		t.Errorf("%s", err)
+		wr.AddDeviceProvider(ua)
 	}
 
 	//ua, ip := GetUaIp()
-	ua, ip := "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_4) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/62.0.3202.89 Safari/537.36", "79.104.42.249"
-	//ua, ip := "AppleCoreMedia/1.0.0.12B466 (Apple TV; U; CPU OS 8_1_3 like Mac OS X; en_us)", "79.104.42.249"
+	//ua, ip := "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_4) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/62.0.3202.89 Safari/537.36", "79.104.42.249"
+	ua, ip := "AppleCoreMedia/1.0.0.12B466 (Apple TV; U; CPU OS 8_1_3 like Mac OS X; en_us)", "79.104.42.249"
 	t.Logf("%s, %s", ip, ua)
 
 	info, err := wr.Parse(ip, ua)
@@ -70,24 +61,28 @@ func TestWrapper_Parse(t *testing.T) {
 		t.Errorf("%s, %s: %s", ip, ua, err)
 	} else {
 		pp.Println(info)
-		pp.Println(info.Debug.TimeGeo.Seconds())
-		pp.Println(info.Debug.TimeDevice.Seconds())
+		pp.Println(info.Debug.TimeGeo.Seconds()*1000 + info.Debug.TimeDevice.Seconds()*1000)
+	}
+
+	info, err = wr.Parse(ip, ua)
+	if err != nil {
+		t.Errorf("%s, %s: %s", ip, ua, err)
+	} else {
+		pp.Println(info)
+		pp.Println(info.Debug.TimeGeo.Seconds()*1000 + info.Debug.TimeDevice.Seconds()*1000)
 	}
 }
 
 func BenchmarkWrapper_Parse(b *testing.B) {
 
-	var (
-		geo    []providerGeo.Geo
-		device []providerDevice.Device
-	)
+	wr := New()
 
 	if sp, err := sypexgeo.New(sypexgeo.Option{
 		Db:     "/Users/kretsu/Work/Go/src/github.com/krecu/go-visitor/app/db/SxGeoMax.dat",
 		Weight: 2,
 		Name:   "sypexgeo",
 	}); err == nil {
-		geo = append(geo, sp)
+		wr.AddGeoProvider(sp)
 	}
 
 	if mm, err := maxmind.New(maxmind.Option{
@@ -95,7 +90,7 @@ func BenchmarkWrapper_Parse(b *testing.B) {
 		Weight: 1,
 		Name:   "maxmind",
 	}); err == nil {
-		geo = append(geo, mm)
+		wr.AddGeoProvider(mm)
 	}
 
 	if br, err := browscap.New(browscap.Option{
@@ -103,31 +98,28 @@ func BenchmarkWrapper_Parse(b *testing.B) {
 		Weight: 2,
 		Name:   "browscap",
 	}); err == nil {
-		device = append(device, br)
+		wr.AddDeviceProvider(br)
 	}
 
 	if ua, err := uasurfer.New(uasurfer.Option{
 		Weight: 1,
 		Name:   "uasurfer",
 	}); err == nil {
-		device = append(device, ua)
-	}
-
-	wr, err := New(geo, device)
-	if err != nil {
-		b.Errorf("%s", err)
+		wr.AddDeviceProvider(ua)
 	}
 
 	//ua, ip := GetUaIp()
-	ua, ip := "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_4) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/62.0.3202.89 Safari/537.36", "79.104.42.249"
-	b.Logf("%s, %s", ip, ua)
+	//ua, ip := "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_4) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/62.0.3202.89 Safari/537.36", "79.104.42.249"
 
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		_, err = wr.Parse(ip, ua)
+		ua, ip := "AppleCoreMedia/1.0.0.12B466 (Apple TV; U; CPU OS 8_1_3 like Mac OS X; en_us)", randomdata.IpV4Address()
+		b.Logf("%s, %s", ip, ua)
+		d, err := wr.Parse(ip, ua)
+		pp.Println(d)
 		if err != nil {
-			b.Errorf("%s, %s: %s", ip, ua, err)
+			//b.Errorf("%s, %s: %s", ip, ua, err)
 		}
 	}
 }
