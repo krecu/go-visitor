@@ -9,14 +9,12 @@ import (
 
 	"github.com/Pallinder/go-randomdata"
 	"github.com/k0kubun/pp"
-
-	"github.com/krecu/go-visitor/app/module/provider/device/browscap"
 	"github.com/krecu/go-visitor/app/module/provider/device/uasurfer"
 	"github.com/krecu/go-visitor/app/module/provider/geo/maxmind"
 	"github.com/krecu/go-visitor/app/module/provider/geo/sypexgeo"
 )
 
-func TestWrapper_Parse(t *testing.T) {
+func TestWrapper_Parse_Default(t *testing.T) {
 
 	wr := New()
 
@@ -36,14 +34,6 @@ func TestWrapper_Parse(t *testing.T) {
 		wr.AddGeoProvider(mm)
 	}
 
-	if br, err := browscap.New(browscap.Option{
-		Db:     "/Users/kretsu/Work/Go/src/github.com/krecu/go-visitor/app/db/full_php_browscap.ini",
-		Weight: 2,
-		Name:   "browscap",
-	}); err == nil {
-		wr.AddDeviceProvider(br)
-	}
-
 	if ua, err := uasurfer.New(uasurfer.Option{
 		Weight: 1,
 		Name:   "uasurfer",
@@ -51,25 +41,17 @@ func TestWrapper_Parse(t *testing.T) {
 		wr.AddDeviceProvider(ua)
 	}
 
-	//ua, ip := GetUaIp()
-	//ua, ip := "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_4) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/62.0.3202.89 Safari/537.36", "79.104.42.249"
-	ua, ip := "AppleCoreMedia/1.0.0.12B466 (Apple TV; U; CPU OS 8_1_3 like Mac OS X; en_us)", "79.104.42.249"
+	ua, ip := "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_4) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/62.0.3202.89 Safari/537.36", "79.104.42.249"
 	t.Logf("%s, %s", ip, ua)
 
 	info, err := wr.Parse(ip, ua)
-	if err != nil {
-		t.Errorf("%s, %s: %s", ip, ua, err)
-	} else {
-		pp.Println(info)
-		pp.Println(info.Debug.TimeGeo.Seconds()*1000 + info.Debug.TimeDevice.Seconds()*1000)
-	}
 
-	info, err = wr.Parse(ip, ua)
 	if err != nil {
 		t.Errorf("%s, %s: %s", ip, ua, err)
 	} else {
-		pp.Println(info)
-		pp.Println(info.Debug.TimeGeo.Seconds()*1000 + info.Debug.TimeDevice.Seconds()*1000)
+		if info == nil {
+			t.Errorf("%s, %s: не был распознан", ip, ua)
+		}
 	}
 }
 
@@ -93,14 +75,6 @@ func BenchmarkWrapper_Parse(b *testing.B) {
 		wr.AddGeoProvider(mm)
 	}
 
-	if br, err := browscap.New(browscap.Option{
-		Db:     "/Users/kretsu/Work/Go/src/github.com/krecu/go-visitor/app/db/full_php_browscap.ini",
-		Weight: 2,
-		Name:   "browscap",
-	}); err == nil {
-		wr.AddDeviceProvider(br)
-	}
-
 	if ua, err := uasurfer.New(uasurfer.Option{
 		Weight: 1,
 		Name:   "uasurfer",
@@ -108,24 +82,20 @@ func BenchmarkWrapper_Parse(b *testing.B) {
 		wr.AddDeviceProvider(ua)
 	}
 
-	//ua, ip := GetUaIp()
-	//ua, ip := "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_4) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/62.0.3202.89 Safari/537.36", "79.104.42.249"
+	lines := GetTV()
+	rand.Seed(time.Now().UnixNano())
 
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		ua, ip := "AppleCoreMedia/1.0.0.12B466 (Apple TV; U; CPU OS 8_1_3 like Mac OS X; en_us)", randomdata.IpV4Address()
-		b.Logf("%s, %s", ip, ua)
-		d, err := wr.Parse(ip, ua)
-		pp.Println(d)
-		if err != nil {
-			//b.Errorf("%s, %s: %s", ip, ua, err)
-		}
+		ua, ip := lines[rand.Intn(len(lines)-1)], randomdata.IpV4Address()
+		d, _ := wr.Parse(ip, ua)
+		pp.Println((d.Debug.TimeDevice.Nanoseconds() + d.Debug.TimeGeo.Nanoseconds()))
 	}
 }
 
-func GetUaIp() (ua string, ip string) {
-	file, _ := os.Open("./user-agent.txt")
+func GetTV() []string {
+	file, _ := os.Open("./../../db/tv.ua")
 	defer file.Close()
 
 	var lines []string
@@ -133,10 +103,5 @@ func GetUaIp() (ua string, ip string) {
 	for scanner.Scan() {
 		lines = append(lines, scanner.Text())
 	}
-
-	rand.Seed(time.Now().UnixNano())
-	ua = lines[rand.Intn(len(lines)-1)]
-	ip = randomdata.IpV4Address()
-
-	return
+	return lines
 }
